@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Peluquería Canina</string>
+    <string name="title_activity_main">Peluquería Canina</string>
+    <string name="package_name">com.peluqueriacanina.app</string>
+    <string name="custom_url_scheme">com.peluqueriacanina.app</string>
+</resources>

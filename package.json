@@ -1,0 +1,28 @@
+{
+  "name": "peluqueria-canina",
+  "version": "1.0.0",
+  "description": "Sistema de Gestión de Peluquería Canina",
+  "main": "oauth-server.js",
+  "scripts": {
+    "build": "echo 'App ready for Capacitor'",
+    "cap:add:android": "capacitor add android",
+    "cap:open:android": "capacitor open android",
+    "cap:build": "capacitor build android",
+    "cap:sync": "capacitor sync android",
+    "oauth:start": "node oauth-server.js",
+    "oauth:dev": "nodemon oauth-server.js",
+    "dev": "npm run oauth:start"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

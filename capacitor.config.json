@@ -1,0 +1,13 @@
+{
+  "appId": "com.peluqueriacanina.app",
+  "appName": "Peluquería Canina",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}

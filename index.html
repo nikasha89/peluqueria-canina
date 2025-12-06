@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peluquería Canina - Gestión</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐕 Peluquería Canina</h1>
+            <p class="subtitle">Sistema de Gestión de Citas</p>
+            
+            <!-- Menú de Usuario / Login -->
+            <div id="userMenu" style="position: absolute; top: 15px; right: 20px; display: flex; align-items: center; gap: 15px; font-size: 13px;">
+                <div id="userInfo" style="display: none; text-align: right;">
+                    <div id="userName" style="font-weight: 600; color: #333;">Usuario</div>
+                    <div id="userEmail" style="color: #666; font-size: 11px;">email@example.com</div>
+                </div>
+                <button id="loginBtn" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; border-radius: 20px; border: none; cursor: pointer; display: none;" onclick="oauthIntegration?.oauth?.iniciarLoginGoogle()">
+                    🔐 Conectar
+                </button>
+                <button id="logoutBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px; border-radius: 20px; border: none; cursor: pointer; display: none;" onclick="oauthIntegration?.oauth?.logout()">
+                    🚪 Salir
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Panel de pestañas -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('agenda')">Agenda</button>
+                <button class="tab-btn" onclick="showTab('citas')">Citas</button>
+                <button class="tab-btn" onclick="showTab('clientes')">Clientes</button>
+                <button class="tab-btn" onclick="showTab('servicios')">Servicios</button>
+                <button class="tab-btn" onclick="showTab('configuracion')">Configuración</button>
+            </div>
+
+            <!-- Pestaña de Agenda -->
+            <div id="agenda" class="tab-content active">
+                <div class="section-header">
+                    <h2>Agenda de Citas</h2>
+                    <div class="filter-btns">
+                        <button class="btn btn-small" onclick="filtrarAgenda('todas')">Todas</button>
+                        <button class="btn btn-small" onclick="filtrarAgenda('hoy')">Hoy</button>
+                        <button class="btn btn-small" onclick="filtrarAgenda('semana')">Esta Semana</button>
+                        <button class="btn btn-small btn-sync" onclick="app.sincronizarConGoogle()">🔄 Sincronizar Google Calendar</button>
+                    </div>
+                </div>
+                <div id="listaAgenda" class="lista-items"></div>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>Total Citas</h3>
+                        <p id="totalCitas" class="stat-number">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Ingresos Totales</h3>
+                        <p id="totalIngresos" class="stat-number">0€</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña de Citas -->
+            <div id="citas" class="tab-content">
+                <div class="section-header">
+                    <h2>Nueva Cita</h2>
+                </div>
+                <form id="citaForm" class="form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="clienteSelect">Cliente</label>
+                            <select id="clienteSelect" required>
+                                <option value="">Seleccionar cliente...</option>
+                                <option value="nuevo">➕ Nuevo cliente</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="perroSelect">Perro</label>
+                            <select id="perroSelect" required disabled>
+                                <option value="">Primero selecciona un cliente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Campos ocultos que aparecen solo para nuevo cliente -->
+                    <div id="camposNuevoCliente" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="clienteNombre">Nombre del Cliente</label>
+                                <input type="text" id="clienteNombre" placeholder="Nombre del dueño">
+                            </div>
+                            <div class="form-group">
+                                <label for="telefono">Teléfono</label>
+                                <input type="tel" id="telefono" placeholder="Teléfono de contacto">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="perroNombre">Nombre del Perro</label>
+                                <input type="text" id="perroNombre" placeholder="Nombre del perro">
+                            </div>
+                            <div class="form-group">
+                                <label for="raza">Raza</label>
+                                <select id="raza">
+                                    <option value="">Seleccionar raza...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tamanoPerroNuevo">Tamaño del Perro</label>
+                                <select id="tamanoPerroNuevo">
+                                    <option value="">Seleccionar tamaño...</option>
+                                    <option value="mini">Mini (< 5kg)</option>
+                                    <option value="pequeno">Pequeño (5-10kg)</option>
+                                    <option value="mediano">Mediano (10-25kg)</option>
+                                    <option value="grande">Grande (25-45kg)</option>
+                                    <option value="gigante">Gigante (> 45kg)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="longitudPeloNuevo">Longitud del Pelo</label>
+                                <select id="longitudPeloNuevo">
+                                    <option value="">Seleccionar longitud...</option>
+                                    <option value="corto">Corto (< 2 cm)</option>
+                                    <option value="medio">Medio (2-5 cm)</option>
+                                    <option value="largo">Largo (> 5 cm)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Campos ocultos para datos del cliente/perro seleccionado -->
+                    <input type="hidden" id="clienteNombreHidden">
+                    <input type="hidden" id="telefonoHidden">
+                    <input type="hidden" id="perroNombreHidden">
+                    <input type="hidden" id="razaHidden">
+                    <input type="hidden" id="longitudPeloHidden">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fecha">Fecha</label>
+                            <input type="date" id="fecha" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="hora">Hora</label>
+                            <input type="time" id="hora" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="servicio">Servicios</label>
+                        <select id="servicio" multiple size="5" style="height: auto;">
+                            <option value="">Cargando servicios...</option>
+                        </select>
+                        <small style="display: block; margin-top: 5px; color: #666;">
+                            Mantén Ctrl (o Cmd en Mac) para seleccionar múltiples servicios
+                        </small>
+                    </div>
+
+                    <!-- El tamaño se obtiene automáticamente del perro seleccionado -->
+                    <input type="hidden" id="tamanoPerroHidden">
+
+                    <div class="form-group">
+                        <label for="precio">Precio Total (€)</label>
+                        <input type="number" id="precio" step="0.01" required placeholder="0.00" readonly style="background-color: #f5f5f5;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notas">Notas</label>
+                        <textarea id="notas" rows="3" placeholder="Observaciones especiales..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Guardar Cita</button>
+                </form>
+            </div>
+
+            <!-- Pestaña de Clientes -->
+            <div id="clientes" class="tab-content">
+                <div class="section-header">
+                    <h2>Gestión de Clientes</h2>
+                </div>
+                <form id="clienteForm" class="form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nombreCliente">Nombre del Cliente</label>
+                            <input type="text" id="nombreCliente" required placeholder="Nombre del dueño">
+                        </div>
+                        <div class="form-group">
+                            <label for="telefonoCliente">Teléfono</label>
+                            <input type="tel" id="telefonoCliente" required placeholder="Teléfono de contacto">
+                        </div>
+                    </div>
+                    <input type="hidden" id="clienteEditId">
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="submit" class="btn btn-primary" id="btnGuardarCliente" style="flex: 2;">Guardar Cliente</button>
+                        <button type="button" class="btn btn-secondary" id="btnCancelarCliente" style="display:none; flex: 1;" onclick="app.cancelarEdicionCliente()">Cancelar</button>
+                    </div>
+                </form>
+
+                <!-- Sección de gestión de perros -->
+                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #666;">Perros del Cliente</h3>
+                    <div id="listaPerrosCliente" style="margin-bottom: 15px;"></div>
+                    <button type="button" class="btn btn-secondary" id="btnMostrarFormPerro" onclick="app.toggleFormPerro()" style="width: 100%;">
+                        ➕ Agregar Nuevo Perro
+                    </button>
+                    
+                    <div id="formPerroContainer" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 8px;">
+                        <h4 style="margin: 0 0 15px 0; color: #555;">Datos del Perro</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="nombrePerro">Nombre del Perro</label>
+                                <input type="text" id="nombrePerro" placeholder="Nombre del perro">
+                            </div>
+                            <div class="form-group">
+                                <label for="razaPerro">Raza</label>
+                                <select id="razaPerro">
+                                    <option value="">Seleccionar raza...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tamanoPerroCliente">Tamaño del Perro</label>
+                                <select id="tamanoPerroCliente">
+                                    <option value="">Seleccionar tamaño...</option>
+                                    <option value="mini">Mini (< 5kg)</option>
+                                    <option value="pequeno">Pequeño (5-10kg)</option>
+                                    <option value="mediano">Mediano (10-25kg)</option>
+                                    <option value="grande">Grande (25-45kg)</option>
+                                    <option value="gigante">Gigante (> 45kg)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="longitudPeloCliente">Longitud del Pelo</label>
+                                <select id="longitudPeloCliente">
+                                    <option value="">Seleccionar longitud...</option>
+                                    <option value="corto">Corto (< 2 cm)</option>
+                                    <option value="medio">Medio (2-5 cm)</option>
+                                    <option value="largo">Largo (> 5 cm)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="edadPerro">Edad del Perro (años) - opcional</label>
+                                <input type="number" id="edadPerro" min="0" max="30" step="1" placeholder="Edad en años">
+                            </div>
+                            <div class="form-group">
+                                <label for="fotoPerro">Foto del Perro (opcional)</label>
+                                <input type="file" id="fotoPerro" accept="image/*">
+                                <div id="previewFoto" style="margin-top: 10px;"></div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="perroEditIndex">
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-primary" onclick="app.agregarPerroACliente()" style="flex: 2;">
+                                <span id="btnTextPerro">✓ Guardar Perro</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="app.cancelarPerro()" style="flex: 1;">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 30px;">
+                    <h2>Lista de Clientes</h2>
+                    <input type="text" id="buscarCliente" class="search-input" placeholder="🔍 Buscar cliente...">
+                </div>
+                <div id="listaClientes" class="lista-items"></div>
+            </div>
+
+            <!-- Pestaña de Servicios -->
+            <div id="servicios" class="tab-content">
+                <div class="section-header">
+                    <h2>Gestión de Servicios</h2>
+                </div>
+                <form id="servicioForm" class="form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nombreServicio">Nombre del Servicio</label>
+                            <input type="text" id="nombreServicio" required placeholder="Ej: Baño completo">
+                        </div>
+                        <div class="form-group">
+                            <label for="tipoServicio">Tipo de Precio</label>
+                            <select id="tipoServicio" required onchange="cambiarTipoPrecio()">
+                                <option value="fijo">Fijo</option>
+                                <option value="porRaza">Por Raza/Tamaño</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Precio Fijo -->
+                    <div id="precioFijoContainer" class="form-group">
+                        <label for="precioFijo">Precio (€)</label>
+                        <input type="number" id="precioFijo" step="0.01" placeholder="0.00">
+                    </div>
+
+                    <!-- Precios por Raza/Tamaño -->
+                    <div id="preciosPorRazaContainer" style="display: none;">
+                        <p style="margin-bottom: 15px; color: #666; font-size: 0.9em;">
+                            Selecciona la raza y el tamaño para definir el precio específico. Puedes agregar múltiples combinaciones.
+                        </p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="razaPrecio">Raza</label>
+                                <select id="razaPrecio">
+                                    <option value="">Seleccionar raza...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tamanoPrecio">Tamaño</label>
+                                <select id="tamanoPrecio">
+                                    <option value="">Seleccionar tamaño...</option>
+                                    <option value="mini">Mini (< 5kg)</option>
+                                    <option value="pequeno">Pequeño (5-10kg)</option>
+                                    <option value="mediano">Mediano (10-25kg)</option>
+                                    <option value="grande">Grande (25-45kg)</option>
+                                    <option value="gigante">Gigante (> 45kg)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="longitudPeloPrecio">Longitud del Pelo</label>
+                                <select id="longitudPeloPrecio">
+                                    <option value="">Seleccionar longitud...</option>
+                                    <option value="corto">Corto (< 2 cm)</option>
+                                    <option value="medio">Medio (2-5 cm)</option>
+                                    <option value="largo">Largo (> 5 cm)</option>
+                                </select>
+                            </div>
+                            <div class="form-group"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="precioCombinacion">Precio (€)</label>
+                                <input type="number" id="precioCombinacion" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: flex-end;">
+                                <button type="button" class="btn btn-secondary" onclick="app.agregarPrecioCombinacion()">➕ Agregar Precio</button>
+                            </div>
+                        </div>
+                        <div id="listaPreciosCombinaciones" style="margin-top: 15px;"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descripcionServicio">Descripción</label>
+                        <textarea id="descripcionServicio" rows="2" placeholder="Descripción del servicio..."></textarea>
+                    </div>
+                    <input type="hidden" id="servicioEditId">
+                    <button type="submit" class="btn btn-primary" id="btnGuardarServicio">Agregar Servicio</button>
+                    <button type="button" class="btn btn-secondary" id="btnCancelarServicio" style="display:none;" onclick="app.cancelarEdicionServicio()">Cancelar</button>
+                </form>
+                <div id="listaServicios" class="lista-items"></div>
+            </div>
+
+            <!-- Pestaña de Configuración -->
+            <div id="configuracion" class="tab-content">
+                <div class="section-header">
+                    <h2>⚙️ Configuración</h2>
+                </div>
+
+                <!-- Sección Razas y Tamaños -->
+                <div class="config-section">
+                    <h3>🐕 Gestión de Razas</h3>
+                    <p class="config-description">
+                        Configura las razas de perros disponibles en la aplicación. Las razas son independientes del tamaño.
+                    </p>
+                    
+                    <form id="razaForm" class="form">
+                        <div class="form-group">
+                            <label for="nombreRaza">Nombre de la Raza</label>
+                            <input type="text" id="nombreRaza" required placeholder="Ej: Labrador Retriever">
+                        </div>
+                        <input type="hidden" id="razaEditId">
+                        <button type="submit" class="btn btn-primary" id="btnGuardarRaza">Agregar Raza</button>
+                        <button type="button" class="btn btn-secondary" id="btnCancelarRaza" style="display:none;" onclick="app.cancelarEdicionRaza()">Cancelar</button>
+                    </form>
+
+                    <div style="margin-top: 20px; margin-bottom: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="toggleListaRazas()" id="btnToggleRazas">
+                            ▼ Mostrar lista de razas
+                        </button>
+                    </div>
+                    <div id="listaRazas" class="lista-items" style="display: none;"></div>
+                </div>
+
+                <div class="config-section" style="margin-top: 30px;">
+                    <h3>📏 Categorías de Tamaño</h3>
+                    <p class="config-description">
+                        Las categorías de tamaño están predefinidas y se usan junto con las razas para determinar precios de servicios.
+                    </p>
+                    <div class="item-card">
+                        <div class="item-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Mini:</span>
+                                <span class="detail-value">Menos de 5kg</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Pequeño:</span>
+                                <span class="detail-value">5-10kg</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Mediano:</span>
+                                <span class="detail-value">10-25kg</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Grande:</span>
+                                <span class="detail-value">25-45kg</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Gigante:</span>
+                                <span class="detail-value">Más de 45kg</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section" style="margin-top: 30px;">
+                    <h3>✂️ Longitud del Pelo</h3>
+                    <p class="config-description">
+                        Las longitudes de pelo están predefinidas y se usan junto con las razas y tamaños para determinar precios de servicios.
+                    </p>
+                    <div class="item-card">
+                        <div class="item-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Corto:</span>
+                                <span class="detail-value">< 2 cm</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Medio:</span>
+                                <span class="detail-value">2-5 cm</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Largo:</span>
+                                <span class="detail-value">> 5 cm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección Google Integration -->
+                <div class="config-section" style="margin-top: 40px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+                    <h3>🔐 Google Integration</h3>
+                    <p class="config-description" style="color: rgba(255,255,255,0.9);">
+                        La sincronización con Google Calendar y Google Drive se maneja automáticamente después de autenticarte. Solo necesitas hacer clic en "Conectar" en la esquina superior derecha.
+                    </p>
+                    
+                    <div id="oauthStatusConfig" style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; color: #333;">
+                        <div id="oauthNotAuthed" style="display: none;">
+                            <p style="color: #f44336; margin: 0 0 15px 0; font-size: 15px; font-weight: 600;">❌ No autenticado</p>
+                            <p style="font-size: 13px; color: #666; margin: 0 0 15px 0; line-height: 1.5;">
+                                Haz clic en el botón <strong>"🔐 Conectar"</strong> en la esquina superior derecha para autenticarte con Google y habilitar la sincronización automática de citas y copias de seguridad.
+                            </p>
+                            <button class="btn btn-primary" onclick="oauthIntegration?.oauth?.iniciarLoginGoogle()" style="background: #667eea; border: none; color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                🔐 Conectar con Google
+                            </button>
+                        </div>
+                        <div id="oauthAuthed" style="display: none;">
+                            <p style="color: #4caf50; margin: 0 0 15px 0; font-size: 15px; font-weight: 600;">✅ Autenticado como <span id="configUserName">usuario</span></p>
+                            <div style="margin-top: 15px; padding: 15px; background: #f5f5f5; border-radius: 6px; font-size: 13px; line-height: 1.8;">
+                                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                                    <span>📅</span>
+                                    <span><strong>Calendar:</strong> <span id="calendarEventCount">0</span> eventos sincronizados</span>
+                                </div>
+                                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                                    <span>📂</span>
+                                    <span><strong>Drive:</strong> <span id="driveFileCount">0</span> archivos disponibles</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span>⏰</span>
+                                    <span><strong>Última sincronización:</strong> <span id="lastSyncTime">Hace unos momentos</span></span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" onclick="oauthIntegration?.hacerBackup()" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                                    💾 Backup Ahora
+                                </button>
+                                <button class="btn btn-sync" onclick="oauthIntegration?.oauth?.sincronizarAutomatico()" style="background: #2196F3; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                                    🔄 Sincronizar
+                                </button>
+                                <button class="btn btn-secondary" onclick="oauthIntegration?.oauth?.logout()" style="background: #f44336; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                                    🚪 Desconectar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Edición -->
+    <div id="modalEdicion" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="app.cerrarModal()">&times;</span>
+            <h2 id="modalTitulo">Editar Cita</h2>
+            <form id="modalForm" class="form">
+                <div id="modalBody"></div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <button type="button" class="btn btn-secondary" onclick="app.cerrarModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- OAuth Integration -->
+    <script src="oauth-manager-v2.js"></script>
+    <script src="oauth-integration.js"></script>
+    
+    <!-- Main App -->
+    <script src="app.js"></script>
+    
+    <!-- OAuth Status Monitor -->
+    <script>
+        // Monitorear estado de OAuth
+        window.addEventListener('syncCompleto', (e) => {
+            const statusEl = document.getElementById('oauth-status');
+            const indicator = document.getElementById('oauth-indicator');
+            const text = document.getElementById('oauth-text');
+            
+            statusEl.style.display = 'block';
+            indicator.style.color = '#4caf50';
+            text.textContent = `✓ Autenticado (${e.detail.calendar.count} eventos)`;
+        });
+
+        window.addEventListener('syncError', (e) => {
+            const statusEl = document.getElementById('oauth-status');
+            const indicator = document.getElementById('oauth-indicator');
+            const text = document.getElementById('oauth-text');
+            
+            statusEl.style.display = 'block';
+            indicator.style.color = '#f44336';
+            text.textContent = 'Error en sincronización';
+        });
+
+        // Mostrar estado si hay sesión activa
+        setTimeout(() => {
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration?.oauth?.estaAutenticado()) {
+                const statusEl = document.getElementById('oauth-status');
+                const indicator = document.getElementById('oauth-indicator');
+                const text = document.getElementById('oauth-text');
+                const datos = oauthIntegration.oauth.obtenerDatosEnCache();
+                
+                statusEl.style.display = 'block';
+                indicator.style.color = '#4caf50';
+    <!-- Script para actualizar UI de Usuario y OAuth -->
+    <script>
+        // Actualizar estado del usuario y OAuth
+        function updateUserUI() {
+            const estado = oauthIntegration?.obtenerEstado?.();
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const userInfo = document.getElementById('userInfo');
+            const userName = document.getElementById('userName');
+            const userEmail = document.getElementById('userEmail');
+            const oauthNotAuthed = document.getElementById('oauthNotAuthed');
+            const oauthAuthed = document.getElementById('oauthAuthed');
+            const configUserName = document.getElementById('configUserName');
+            
+            if (estado?.autenticado) {
+                // Mostrar UI autenticado
+                if (loginBtn) loginBtn.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'block';
+                if (userInfo) userInfo.style.display = 'block';
+                
+                // Actualizar info de usuario
+                if (estado.usuario?.name) {
+                    if (userName) userName.textContent = estado.usuario.name;
+                    if (configUserName) configUserName.textContent = estado.usuario.name;
+                }
+                if (estado.usuario?.email && userEmail) {
+                    userEmail.textContent = estado.usuario.email;
+                }
+                
+                // Mostrar sección autenticada en configuración
+                if (oauthNotAuthed) oauthNotAuthed.style.display = 'none';
+                if (oauthAuthed) oauthAuthed.style.display = 'block';
+                
+                // Actualizar información de sincronización
+                if (estado.eventosCalendar !== undefined) {
+                    const countEl = document.getElementById('calendarEventCount');
+                    if (countEl) countEl.textContent = estado.eventosCalendar;
+                }
+                if (estado.archivosGDrive !== undefined) {
+                    const countEl = document.getElementById('driveFileCount');
+                    if (countEl) countEl.textContent = estado.archivosGDrive;
+                }
+                if (estado.ultimaSincronizacion) {
+                    const timeEl = document.getElementById('lastSyncTime');
+                    if (timeEl) timeEl.textContent = formatTimeAgo(estado.ultimaSincronizacion);
+                }
+            } else {
+                // Mostrar UI no autenticado
+                if (loginBtn) loginBtn.style.display = 'block';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+                if (userInfo) userInfo.style.display = 'none';
+                
+                // Mostrar sección no autenticada en configuración
+                if (oauthNotAuthed) oauthNotAuthed.style.display = 'block';
+                if (oauthAuthed) oauthAuthed.style.display = 'none';
+            }
+        }
+        
+        // Función auxiliar para formatear tiempo
+        function formatTimeAgo(date) {
+            if (!date) return 'Nunca';
+            const now = new Date();
+            const diff = now - new Date(date);
+            const mins = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (mins < 1) return 'Hace unos momentos';
+            if (mins < 60) return `Hace ${mins} min`;
+            if (hours < 24) return `Hace ${hours}h`;
+            if (days < 7) return `Hace ${days}d`;
+            return date.toLocaleDateString('es-ES');
+        }
+        
+        // Escuchar cambios de autenticación
+        if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+            // Actualizar inmediatamente
+            updateUserUI();
+            
+            // Escuchar eventos de OAuth
+            document.addEventListener('oauthLoginCompleto', updateUserUI);
+            document.addEventListener('oauthLoggedOut', updateUserUI);
+            document.addEventListener('syncCompleto', updateUserUI);
+            document.addEventListener('tokenRefreshed', updateUserUI);
+        }
+        
+        // Actualizar UI cada 10 segundos también (por si hay cambios externos)
+        setInterval(updateUserUI, 10000);
+    </script>
+</body>
+</html>

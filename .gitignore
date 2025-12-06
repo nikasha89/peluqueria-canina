@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+android/app/build/
+android/.gradle/
+www/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Batch scripts y scripts locales
+*.bat
+build.bat
+build-release.bat
+compile-apk*.bat
+build-apk*.bat
+setup.bat
+
+# Local env
+.env
+.env.local
+
+# Capacitor
+capacitor.config.json (pero incluir configuración base si es necesaria)
