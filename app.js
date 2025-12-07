@@ -43,9 +43,10 @@ class PeluqueriaCanina {
         this.cargarServicios();
         this.cargarClientesEnSelect();
         this.cargarRazasEnSelects();
+        this.cargarTamanosEnSelects(); // Cargar tamaños dinámicamente
         // this.cargarConfigGoogle(); // OBSOLETO - ya no se usa
         this.mostrarServicios();
-        this.mostrarAgenda('semana'); // Mostrar citas de esta semana por defecto
+        this.mostrarAgenda('todas'); // Mostrar todas las citas por defecto
         this.mostrarClientes();
         this.mostrarRazas();
         this.actualizarEstadisticas();
@@ -625,10 +626,10 @@ class PeluqueriaCanina {
         this.guardarDatos('clientes', this.clientes);
         console.log('Clientes guardados:', this.clientes);
         
-        // Auto-backup a Google Drive
-        if (window.oauthIntegration) {
-            window.oauthIntegration.autoBackup();
-        }
+        // Auto-backup en segundo plano
+        setTimeout(() => {
+            this.sincronizarConDrive(true).catch(err => console.log('Auto-backup Drive:', err));
+        }, 500);
         
         document.getElementById('clienteForm').reset();
         document.getElementById('clienteEditId').value = '';
@@ -779,6 +780,28 @@ class PeluqueriaCanina {
         
         if (selectRazaCliente) selectRazaCliente.innerHTML = opciones;
         if (selectRazaCita) selectRazaCita.innerHTML = opciones;
+    }
+
+    cargarTamanosEnSelects() {
+        const tamanos = [
+            { valor: 'mini', texto: 'Mini (< 5kg)' },
+            { valor: 'pequeno', texto: 'Pequeño (5-10kg)' },
+            { valor: 'mediano', texto: 'Mediano (10-25kg)' },
+            { valor: 'grande', texto: 'Grande (25-45kg)' },
+            { valor: 'gigante', texto: 'Gigante (> 45kg)' }
+        ];
+        
+        const opciones = '<option value="">Seleccionar tamaño...</option>' +
+            tamanos.map(t => 
+                `<option value="${t.valor}">${t.texto}</option>`
+            ).join('');
+        
+        // Actualizar todos los selects de tamaño
+        const selectTamanoNuevo = document.getElementById('tamanoPerroNuevo');
+        const selectTamanoCliente = document.getElementById('tamanoPerroCliente');
+        
+        if (selectTamanoNuevo) selectTamanoNuevo.innerHTML = opciones;
+        if (selectTamanoCliente) selectTamanoCliente.innerHTML = opciones;
     }
 
 
@@ -1406,10 +1429,16 @@ class PeluqueriaCanina {
         // Mostrar confirmación
         this.mostrarNotificacion('✅ Cita guardada correctamente');
 
-        // Auto-sincronizar con Google Calendar y Drive
-        if (window.oauthIntegration) {
-            window.oauthIntegration.autoSincronizarCita(cita);
+        // Sincronizar con Google Calendar si está autorizado
+        if (this.googleCalendarToken) {
+            this.agregarAGoogleCalendar(cita);
         }
+
+        // Auto-sincronizar en segundo plano (sin bloquear UI)
+        setTimeout(() => {
+            this.sincronizarConGoogle(true).catch(err => console.log('Auto-sync Calendar:', err));
+            this.sincronizarConDrive(true).catch(err => console.log('Auto-sync Drive:', err));
+        }, 500);
 
         // Actualizar vistas
         this.mostrarAgenda();
@@ -1656,13 +1685,19 @@ class PeluqueriaCanina {
         if (confirm('¿Estás seguro de que quieres eliminar esta cita?')) {
             const cita = this.citas.find(c => c.id === id);
             
-            // Auto-eliminar de Google Calendar
-            if (window.oauthIntegration) {
-                window.oauthIntegration.autoEliminarCita(cita);
+            // Eliminar de Google Calendar si está sincronizada
+            if (cita.googleEventId && this.googleCalendarToken) {
+                this.eliminarDeGoogleCalendar(cita.googleEventId);
             }
             
             this.citas = this.citas.filter(c => c.id !== id);
             this.guardarDatos('citas', this.citas);
+            
+            // Auto-backup en segundo plano
+            setTimeout(() => {
+                this.sincronizarConDrive(true).catch(err => console.log('Auto-backup Drive:', err));
+            }, 500);
+            
             this.mostrarAgenda();
             this.mostrarClientes();
             this.actualizarEstadisticas();
@@ -1694,24 +1729,33 @@ class PeluqueriaCanina {
                 </div>
                 <div class="form-group">
                     <label>Raza</label>
-                    <input type="text" id="edit_raza" value="${cita.raza}" required>
+                    <select id="edit_raza" required>
+                        <option value="">Seleccionar raza...</option>
+                        ${this.razas.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(raza => 
+                            `<option value="${raza.nombre}" ${cita.raza === raza.nombre ? 'selected' : ''}>${raza.nombre}</option>`
+                        ).join('')}
+                    </select>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Tamaño del Perro</label>
                     <select id="edit_tamano" required>
-                        <option value="pequeno" ${cita.tamanoPerro === 'pequeno' ? 'selected' : ''}>Pequeño (&lt;10kg)</option>
+                        <option value="">Seleccionar tamaño...</option>
+                        <option value="mini" ${cita.tamanoPerro === 'mini' ? 'selected' : ''}>Mini (&lt; 5kg)</option>
+                        <option value="pequeno" ${cita.tamanoPerro === 'pequeno' ? 'selected' : ''}>Pequeño (5-10kg)</option>
                         <option value="mediano" ${cita.tamanoPerro === 'mediano' ? 'selected' : ''}>Mediano (10-25kg)</option>
-                        <option value="grande" ${cita.tamanoPerro === 'grande' ? 'selected' : ''}>Grande (&gt;25kg)</option>
+                        <option value="grande" ${cita.tamanoPerro === 'grande' ? 'selected' : ''}>Grande (25-45kg)</option>
+                        <option value="gigante" ${cita.tamanoPerro === 'gigante' ? 'selected' : ''}>Gigante (&gt; 45kg)</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Longitud del Pelo</label>
                     <select id="edit_longitudPelo" required>
-                        <option value="corto" ${cita.longitudPelo === 'corto' ? 'selected' : ''}>Corto</option>
-                        <option value="medio" ${cita.longitudPelo === 'medio' ? 'selected' : ''}>Medio</option>
-                        <option value="largo" ${cita.longitudPelo === 'largo' ? 'selected' : ''}>Largo</option>
+                        <option value="">Seleccionar longitud...</option>
+                        <option value="corto" ${cita.longitudPelo === 'corto' ? 'selected' : ''}>Corto (&lt; 2 cm)</option>
+                        <option value="medio" ${cita.longitudPelo === 'medio' ? 'selected' : ''}>Medio (2-5 cm)</option>
+                        <option value="largo" ${cita.longitudPelo === 'largo' ? 'selected' : ''}>Largo (&gt; 5 cm)</option>
                     </select>
                 </div>
             </div>
@@ -1890,10 +1934,10 @@ class PeluqueriaCanina {
             this.clientes = this.clientes.filter(c => c.id !== id);
             this.guardarDatos('clientes', this.clientes);
             
-            // Auto-backup a Google Drive
-            if (window.oauthIntegration) {
-                window.oauthIntegration.autoBackup();
-            }
+            // Auto-backup en segundo plano
+            setTimeout(() => {
+                this.sincronizarConDrive(true).catch(err => console.log('Auto-backup Drive:', err));
+            }, 500);
             
             this.mostrarClientes();
             this.mostrarAgenda();
@@ -1948,10 +1992,10 @@ class PeluqueriaCanina {
 
         this.guardarDatos('servicios', this.servicios);
         
-        // Auto-backup a Google Drive
-        if (window.oauthIntegration) {
-            window.oauthIntegration.autoBackup();
-        }
+        // Auto-backup en segundo plano
+        setTimeout(() => {
+            this.sincronizarConDrive(true).catch(err => console.log('Auto-backup Drive:', err));
+        }, 500);
         
         document.getElementById('servicioForm').reset();
         document.getElementById('servicioEditId').value = '';
@@ -2173,10 +2217,10 @@ class PeluqueriaCanina {
             this.servicios = this.servicios.filter(s => s.id !== id);
             this.guardarDatos('servicios', this.servicios);
             
-            // Auto-backup a Google Drive
-            if (window.oauthIntegration) {
-                window.oauthIntegration.autoBackup();
-            }
+            // Auto-backup en segundo plano
+            setTimeout(() => {
+                this.sincronizarConDrive(true).catch(err => console.log('Auto-backup Drive:', err));
+            }, 500);
             
             this.mostrarServicios();
             this.cargarServicios();
@@ -2185,16 +2229,18 @@ class PeluqueriaCanina {
     }
 
     // Google Calendar Integration
-    async sincronizarConGoogle() {
+    async sincronizarConGoogle(silencioso = false) {
         try {
             // Usar la nueva integración OAuth
             if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
                 const estado = oauthIntegration.obtenerEstado();
                 
                 if (!estado.autenticado) {
-                    const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
-                    if (conectar && typeof oauthManager !== 'undefined') {
-                        await oauthManager.iniciarLoginGoogle();
+                    if (!silencioso) {
+                        const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
+                        if (conectar && typeof oauthManager !== 'undefined') {
+                            await oauthManager.iniciarLoginGoogle();
+                        }
                     }
                     return;
                 }
@@ -2203,7 +2249,7 @@ class PeluqueriaCanina {
                 const citasPendientes = this.citas.filter(c => !c.googleEventId && !c.completada);
                 
                 if (citasPendientes.length === 0) {
-                    this.mostrarNotificacion('ℹ️ No hay citas nuevas para sincronizar');
+                    if (!silencioso) this.mostrarNotificacion('ℹ️ No hay citas nuevas para sincronizar');
                     return;
                 }
 
@@ -2220,46 +2266,48 @@ class PeluqueriaCanina {
                 }
 
                 if (sincronizadas === 0) {
-                    this.mostrarNotificacion('⚠️ No se pudo sincronizar ninguna cita. Verifica la consola para más detalles.');
+                    if (!silencioso) this.mostrarNotificacion('⚠️ No se pudo sincronizar ninguna cita. Verifica la consola para más detalles.');
                     return;
                 }
 
                 if (sincronizadas > 0) {
-                    this.mostrarNotificacion(`✅ ${sincronizadas} cita${sincronizadas > 1 ? 's' : ''} sincronizada${sincronizadas > 1 ? 's' : ''} con Google Calendar`);
+                    if (!silencioso) this.mostrarNotificacion(`✅ ${sincronizadas} cita${sincronizadas > 1 ? 's' : ''} sincronizada${sincronizadas > 1 ? 's' : ''} con Google Calendar`);
                 } else {
-                    this.mostrarNotificacion('ℹ️ Todas las citas ya estaban en Google Calendar');
+                    if (!silencioso) this.mostrarNotificacion('ℹ️ Todas las citas ya estaban en Google Calendar');
                 }
             } else {
-                this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
+                if (!silencioso) this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
             }
         } catch (error) {
             console.error('Error al sincronizar:', error);
-            this.mostrarNotificacion('❌ Error al sincronizar con Google Calendar. Verifica tu conexión.');
+            if (!silencioso) this.mostrarNotificacion('❌ Error al sincronizar con Google Calendar. Verifica tu conexión.');
         }
     }
 
     // Google Drive Backup
-    async sincronizarConDrive() {
+    async sincronizarConDrive(silencioso = false) {
         try {
             if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
                 const estado = oauthIntegration.obtenerEstado();
                 
                 if (!estado.autenticado) {
-                    const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
-                    if (conectar && typeof oauthManager !== 'undefined') {
-                        await oauthManager.iniciarLoginGoogle();
+                    if (!silencioso) {
+                        const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
+                        if (conectar && typeof oauthManager !== 'undefined') {
+                            await oauthManager.iniciarLoginGoogle();
+                        }
                     }
                     return;
                 }
                 
-                this.mostrarNotificacion('💾 Creando backup en Google Drive...');
+                if (!silencioso) this.mostrarNotificacion('💾 Creando backup en Google Drive...');
                 
                 const resultado = await oauthIntegration.hacerBackup();
                 
                 if (resultado) {
-                    this.mostrarNotificacion('✅ Backup guardado en Google Drive');
+                    if (!silencioso) this.mostrarNotificacion('✅ Backup guardado en Google Drive');
                 } else {
-                    this.mostrarNotificacion('⚠️ No se pudo crear el backup');
+                    if (!silencioso) this.mostrarNotificacion('⚠️ No se pudo crear el backup');
                 }
             } else {
                 this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
