@@ -308,7 +308,7 @@ class PeluqueriaCanina {
             option.dataset.servicio = JSON.stringify(servicio);
             
             if (servicio.tipo === 'fijo') {
-                option.textContent = `${servicio.nombre} - ${servicio.precio.toFixed(2)}€`;
+                option.textContent = `${servicio.nombre} - ${(servicio.precio || 0).toFixed(2)}€`;
             } else {
                 option.textContent = `${servicio.nombre} (${servicio.preciosCombinaciones?.length || 0} combinaciones)`;
             }
@@ -393,7 +393,7 @@ class PeluqueriaCanina {
 
         if (servicio.tipo === 'fijo') {
             // Precio fijo - no depende de raza ni tamaño
-            precioInput.value = servicio.precio.toFixed(2);
+            precioInput.value = (servicio.precio || 0).toFixed(2);
         } else {
             // Precio por raza/tamaño/longitud - buscar combinación exacta
             if (razaPerro && tamanoPerro && longitudPelo) {
@@ -401,7 +401,7 @@ class PeluqueriaCanina {
                     c.raza === razaPerro && c.tamano === tamanoPerro && c.longitudPelo === longitudPelo
                 );
                 if (combinacion) {
-                    precioInput.value = combinacion.precio.toFixed(2);
+                    precioInput.value = (combinacion.precio || 0).toFixed(2);
                 } else {
                     precioInput.value = '';
                     precioInput.placeholder = 'No hay precio para esta combinación';
@@ -1523,7 +1523,7 @@ class PeluqueriaCanina {
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">💰 Precio:</span>
-                        <span class="detail-value">${cita.precio.toFixed(2)}€</span>
+                        <span class="detail-value">${(cita.precio || 0).toFixed(2)}€</span>
                     </div>
                     ${cita.completada ? `
                         <div class="detail-item">
@@ -1727,7 +1727,7 @@ class PeluqueriaCanina {
                         const isSelected = cita.servicios && cita.servicios.includes(s.nombre);
                         return `
                             <option value="${s.id}" data-servicio='${JSON.stringify(s)}' ${isSelected ? 'selected' : ''}>
-                                ${s.nombre}${s.tipo === 'porRaza' ? ` (${s.preciosCombinaciones.length} combinaciones)` : ` - ${s.precio.toFixed(2)}€`}
+                                ${s.nombre}${s.tipo === 'porRaza' ? ` (${s.preciosCombinaciones.length} combinaciones)` : ` - ${(s.precio || 0).toFixed(2)}€`}
                             </option>
                         `;
                     }).join('')}
@@ -2027,7 +2027,7 @@ class PeluqueriaCanina {
             <div class="item-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px;">
                 <div>
                     <strong>${combo.raza}</strong> - ${this.nombreTamano(combo.tamano)} - ${this.nombreLongitudPelo(combo.longitudPelo)}
-                    <span style="color: #4caf50; font-weight: bold; margin-left: 10px;">${combo.precio.toFixed(2)}€</span>
+                    <span style="color: #4caf50; font-weight: bold; margin-left: 10px;">${(combo.precio || 0).toFixed(2)}€</span>
                 </div>
                 <button type="button" class="btn-delete" onclick="app.eliminarPrecioCombinacion(${index})">🗑️</button>
             </div>
@@ -2082,7 +2082,7 @@ class PeluqueriaCanina {
                     </div>
                     <div class="item-actions">
                         ${servicio.tipo === 'fijo' ? 
-                            `<span class="badge badge-success" style="font-size: 1.2em;">${servicio.precio.toFixed(2)}€</span>` :
+                            `<span class="badge badge-success" style="font-size: 1.2em;">${(servicio.precio || 0).toFixed(2)}€</span>` :
                             `<div style="text-align: right;">
                                 <div class="badge badge-info" style="font-size: 0.9em;">Por raza/tamaño</div>
                                 <div style="font-size: 0.85em; margin-top: 5px; color: #666;">
@@ -2104,7 +2104,7 @@ class PeluqueriaCanina {
                         ${servicio.preciosCombinaciones?.map(c => `
                             <div class="detail-item" style="display: flex; justify-content: space-between; padding: 5px 0;">
                                 <span class="detail-label">${c.raza} - ${this.nombreTamano(c.tamano)} - ${this.nombreLongitudPelo(c.longitudPelo)}</span>
-                                <span class="detail-value" style="color: #4caf50; font-weight: bold;">${c.precio.toFixed(2)}€</span>
+                                <span class="detail-value" style="color: #4caf50; font-weight: bold;">${(c.precio || 0).toFixed(2)}€</span>
                             </div>
                         `).join('') || '<div style="color: #999;">No hay combinaciones definidas</div>'}
                     </div>
@@ -2353,7 +2353,7 @@ class PeluqueriaCanina {
 }
 
 // Funciones globales para las pestañas
-function showTab(tabName) {
+function showTab(tabName, btnElement) {
     // Ocultar todos los contenidos
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -2366,7 +2366,9 @@ function showTab(tabName) {
 
     // Activar el contenido y botón seleccionado
     document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
+    if (btnElement) {
+        btnElement.classList.add('active');
+    }
     
     // Si se muestra la pestaña de servicios, asegurar que las razas estén cargadas
     if (tabName === 'servicios' && app && typeof app.cargarRazasEnSelectPrecio === 'function') {
