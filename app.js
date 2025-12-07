@@ -43,7 +43,7 @@ class PeluqueriaCanina {
         this.cargarServicios();
         this.cargarClientesEnSelect();
         this.cargarRazasEnSelects();
-        this.cargarConfigGoogle();
+        // this.cargarConfigGoogle(); // OBSOLETO - ya no se usa
         this.mostrarServicios();
         this.mostrarAgenda('semana'); // Mostrar citas de esta semana por defecto
         this.mostrarClientes();
@@ -842,28 +842,18 @@ class PeluqueriaCanina {
         }
     }
 
-    // Configuración Google Calendar
+    // Configuración Google Calendar (OBSOLETO - ahora se maneja con OAuth)
     cargarConfigGoogle() {
-        document.getElementById('googleClientId').value = this.googleConfig.clientId || '';
-        document.getElementById('googleApiKey').value = this.googleConfig.apiKey || '';
+        // Función obsoleta - ya no se usa
+        // Los elementos googleClientId y googleApiKey ya no existen en el HTML
     }
 
     guardarConfigGoogle() {
-        this.googleConfig = {
-            clientId: document.getElementById('googleClientId').value.trim(),
-            apiKey: document.getElementById('googleApiKey').value.trim()
-        };
-
-        this.guardarDatos('googleConfig', this.googleConfig);
-
-        if (this.googleConfig.clientId && this.googleConfig.apiKey) {
-            this.mostrarNotificacion('✅ Configuración de Google Calendar guardada');
-            this.mostrarEstadoGoogle('success', '✅ Configuración guardada correctamente');
-        } else {
-            this.mostrarNotificacion('⚠️ Completa ambos campos para habilitar la sincronización');
-            this.mostrarEstadoGoogle('warning', '⚠️ Completa Client ID y API Key para habilitar la sincronización');
-        }
+        // Función obsoleta - ya no se usa
+        // La configuración ahora se maneja directamente en oauth-manager-v2.js
     }
+
+    // Sincronización con Google Calendar
 
     verInstruccionesGoogle() {
         window.open('GOOGLE_CALENDAR_SETUP.md', '_blank');
@@ -909,11 +899,7 @@ class PeluqueriaCanina {
     }
 
     cargarConfigDrive() {
-        document.getElementById('gdriveClientId').value = this.driveConfig.clientId || '';
-        document.getElementById('gdriveApiKey').value = this.driveConfig.apiKey || '';
-        document.getElementById('autoSyncDrive').checked = this.driveConfig.autoSync || false;
-        this.actualizarInfoSync();
-        this.actualizarEstadoDrive();
+        // Función obsoleta - la configuración ahora se maneja en oauth-manager-v2.js
     }
 
     toggleAutoSync(enabled) {
@@ -2070,10 +2056,18 @@ class PeluqueriaCanina {
     // Google Calendar Integration
     async sincronizarConGoogle() {
         try {
-            // Verificar si ya está autorizado
-            if (!this.googleCalendarToken) {
-                await this.autorizarGoogleCalendar();
-            } else {
+            // Usar la nueva integración OAuth
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+                const estado = oauthIntegration.obtenerEstado();
+                
+                if (!estado.autenticado) {
+                    const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
+                    if (conectar && typeof oauthManager !== 'undefined') {
+                        await oauthManager.iniciarLoginGoogle();
+                    }
+                    return;
+                }
+                
                 // Sincronizar todas las citas pendientes
                 const citasPendientes = this.citas.filter(c => !c.googleEventId && !c.completada);
                 
@@ -2082,11 +2076,26 @@ class PeluqueriaCanina {
                     return;
                 }
 
+                let sincronizadas = 0;
                 for (const cita of citasPendientes) {
-                    await this.agregarAGoogleCalendar(cita);
+                    try {
+                        const resultado = await oauthIntegration.exportarCitaACalendar(cita);
+                        if (resultado) {
+                            sincronizadas++;
+                        }
+                    } catch (error) {
+                        console.error('Error al sincronizar cita:', cita, error);
+                    }
                 }
 
-                this.mostrarNotificacion(`✅ ${citasPendientes.length} citas sincronizadas con Google Calendar`);
+                if (sincronizadas === 0) {
+                    this.mostrarNotificacion('⚠️ No se pudo sincronizar ninguna cita. Verifica la consola para más detalles.');
+                    return;
+                }
+
+                this.mostrarNotificacion(`✅ ${sincronizadas} citas sincronizadas con Google Calendar`);
+            } else {
+                this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
             }
         } catch (error) {
             console.error('Error al sincronizar:', error);
@@ -2268,9 +2277,10 @@ function toggleListaRazas() {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new PeluqueriaCanina();
+    window.app = app; // Hacer disponible globalmente para OAuth
     
     // Cargar configuración de Drive si existe
-    if (app.cargarConfigDrive) {
-        app.cargarConfigDrive();
-    }
+    // if (app.cargarConfigDrive) {
+    //     app.cargarConfigDrive();
+    // }
 });

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Peluquería Canina - Gestión</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,18 +13,88 @@
             <h1>🐕 Peluquería Canina</h1>
             <p class="subtitle">Sistema de Gestión de Citas</p>
             
-            <!-- Menú de Usuario / Login -->
-            <div id="userMenu" style="position: absolute; top: 15px; right: 20px; display: flex; align-items: center; gap: 15px; font-size: 13px;">
-                <div id="userInfo" style="display: none; text-align: right;">
-                    <div id="userName" style="font-weight: 600; color: #333;">Usuario</div>
-                    <div id="userEmail" style="color: #666; font-size: 11px;">email@example.com</div>
+            <!-- Menú de Usuario / Login - Diseño Moderno -->
+            <div id="userMenu" style="position: absolute; top: 20px; right: 20px;">
+                <!-- Botón de Login (cuando no está autenticado) -->
+                <button id="loginBtn" class="btn btn-primary" style="
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    border-radius: 25px;
+                    border: none;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                    transition: all 0.3s ease;
+                " onclick="if(typeof oauthManager !== 'undefined') { oauthManager.iniciarLoginGoogle(); } else { alert('⏳ Cargando Google API...'); }"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.5)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.4)'">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3"/>
+                    </svg>
+                    <span>Conectar con Google</span>
+                </button>
+                
+                <!-- Perfil de Usuario (cuando está autenticado) -->
+                <div id="userProfileCard" style="display: none;">
+                    <div style="
+                        background: white;
+                        border-radius: 20px;
+                        padding: 12px 18px;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        border: 2px solid #f0f0f0;
+                    ">
+                        <!-- Avatar con inicial -->
+                        <div id="userAvatar" style="
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: 600;
+                            font-size: 16px;
+                        ">A</div>
+                        
+                        <!-- Info del usuario -->
+                        <div id="userInfo" style="text-align: left; flex: 1;">
+                            <div id="userName" style="font-weight: 600; color: #333; font-size: 14px; line-height: 1.3;">Usuario</div>
+                            <div id="userEmail" style="color: #999; font-size: 11px; line-height: 1.3;">email@example.com</div>
+                        </div>
+                        
+                        <!-- Botón Salir -->
+                        <button id="logoutBtn" style="
+                            padding: 8px 14px;
+                            font-size: 12px;
+                            font-weight: 500;
+                            border-radius: 15px;
+                            border: 2px solid #f0f0f0;
+                            background: white;
+                            color: #666;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            display: flex;
+                            align-items: center;
+                            gap: 5px;
+                        " onclick="if(typeof oauthManager !== 'undefined') { oauthManager.logout(); }"
+                        onmouseover="this.style.background='#fee'; this.style.borderColor='#fcc'; this.style.color='#c33'"
+                        onmouseout="this.style.background='white'; this.style.borderColor='#f0f0f0'; this.style.color='#666'">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                            </svg>
+                            Salir
+                        </button>
+                    </div>
                 </div>
-                <button id="loginBtn" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; border-radius: 20px; border: none; cursor: pointer; display: none;" onclick="oauthIntegration?.oauth?.iniciarLoginGoogle()">
-                    🔐 Conectar
-                </button>
-                <button id="logoutBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px; border-radius: 20px; border: none; cursor: pointer; display: none;" onclick="oauthIntegration?.oauth?.logout()">
-                    🚪 Salir
-                </button>
             </div>
         </header>
 
@@ -487,6 +558,11 @@
                             </div>
                         </div>
                     </div>
+                </div>                                    🚪 Desconectar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -507,6 +583,10 @@
         </div>
     </div>
 
+    <!-- Google API Scripts (cargar PRIMERO) -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <!-- OAuth Integration -->
     <script src="oauth-manager-v2.js"></script>
     <script src="oauth-integration.js"></script>
@@ -514,95 +594,95 @@
     <!-- Main App -->
     <script src="app.js"></script>
     
-    <!-- OAuth Status Monitor -->
-    <script>
-        // Monitorear estado de OAuth
-        window.addEventListener('syncCompleto', (e) => {
-            const statusEl = document.getElementById('oauth-status');
-            const indicator = document.getElementById('oauth-indicator');
-            const text = document.getElementById('oauth-text');
-            
-            statusEl.style.display = 'block';
-            indicator.style.color = '#4caf50';
-            text.textContent = `✓ Autenticado (${e.detail.calendar.count} eventos)`;
-        });
-
-        window.addEventListener('syncError', (e) => {
-            const statusEl = document.getElementById('oauth-status');
-            const indicator = document.getElementById('oauth-indicator');
-            const text = document.getElementById('oauth-text');
-            
-            statusEl.style.display = 'block';
-            indicator.style.color = '#f44336';
-            text.textContent = 'Error en sincronización';
-        });
-
-        // Mostrar estado si hay sesión activa
-        setTimeout(() => {
-            if (typeof oauthIntegration !== 'undefined' && oauthIntegration?.oauth?.estaAutenticado()) {
-                const statusEl = document.getElementById('oauth-status');
-                const indicator = document.getElementById('oauth-indicator');
-                const text = document.getElementById('oauth-text');
-                const datos = oauthIntegration.oauth.obtenerDatosEnCache();
-                
-                statusEl.style.display = 'block';
-                indicator.style.color = '#4caf50';
     <!-- Script para actualizar UI de Usuario y OAuth -->
     <script>
+        // Variable para evitar actualizaciones redundantes
+        let lastAuthState = null;
+        let updateUITimeout = null;
+        
         // Actualizar estado del usuario y OAuth
         function updateUserUI() {
-            const estado = oauthIntegration?.obtenerEstado?.();
-            const loginBtn = document.getElementById('loginBtn');
-            const logoutBtn = document.getElementById('logoutBtn');
-            const userInfo = document.getElementById('userInfo');
-            const userName = document.getElementById('userName');
-            const userEmail = document.getElementById('userEmail');
-            const oauthNotAuthed = document.getElementById('oauthNotAuthed');
-            const oauthAuthed = document.getElementById('oauthAuthed');
-            const configUserName = document.getElementById('configUserName');
-            
-            if (estado?.autenticado) {
-                // Mostrar UI autenticado
-                if (loginBtn) loginBtn.style.display = 'none';
-                if (logoutBtn) logoutBtn.style.display = 'block';
-                if (userInfo) userInfo.style.display = 'block';
-                
-                // Actualizar info de usuario
-                if (estado.usuario?.name) {
-                    if (userName) userName.textContent = estado.usuario.name;
-                    if (configUserName) configUserName.textContent = estado.usuario.name;
-                }
-                if (estado.usuario?.email && userEmail) {
-                    userEmail.textContent = estado.usuario.email;
-                }
-                
-                // Mostrar sección autenticada en configuración
-                if (oauthNotAuthed) oauthNotAuthed.style.display = 'none';
-                if (oauthAuthed) oauthAuthed.style.display = 'block';
-                
-                // Actualizar información de sincronización
-                if (estado.eventosCalendar !== undefined) {
-                    const countEl = document.getElementById('calendarEventCount');
-                    if (countEl) countEl.textContent = estado.eventosCalendar;
-                }
-                if (estado.archivosGDrive !== undefined) {
-                    const countEl = document.getElementById('driveFileCount');
-                    if (countEl) countEl.textContent = estado.archivosGDrive;
-                }
-                if (estado.ultimaSincronizacion) {
-                    const timeEl = document.getElementById('lastSyncTime');
-                    if (timeEl) timeEl.textContent = formatTimeAgo(estado.ultimaSincronizacion);
-                }
-            } else {
-                // Mostrar UI no autenticado
-                if (loginBtn) loginBtn.style.display = 'block';
-                if (logoutBtn) logoutBtn.style.display = 'none';
-                if (userInfo) userInfo.style.display = 'none';
-                
-                // Mostrar sección no autenticada en configuración
-                if (oauthNotAuthed) oauthNotAuthed.style.display = 'block';
-                if (oauthAuthed) oauthAuthed.style.display = 'none';
+            // Verificar que oauthIntegration existe antes de usarlo
+            if (typeof oauthIntegration === 'undefined' || !oauthIntegration) {
+                return; // Salir si aún no está disponible
             }
+            
+            // Debounce: evitar múltiples llamadas seguidas
+            if (updateUITimeout) {
+                clearTimeout(updateUITimeout);
+            }
+            
+            updateUITimeout = setTimeout(() => {
+                const estado = oauthIntegration?.obtenerEstado?.();
+                
+                // Solo actualizar si el estado cambió
+                const currentState = JSON.stringify({
+                    autenticado: estado?.autenticado,
+                    email: estado?.usuario?.email
+                });
+                
+                if (currentState === lastAuthState) {
+                    return; // Sin cambios, no actualizar
+                }
+                
+                lastAuthState = currentState;
+                console.log('🔄 Actualizando UI de usuario (estado cambió)');
+                
+                const loginBtn = document.getElementById('loginBtn');
+                const userProfileCard = document.getElementById('userProfileCard');
+                const userAvatar = document.getElementById('userAvatar');
+                const userName = document.getElementById('userName');
+                const userEmail = document.getElementById('userEmail');
+                const oauthNotAuthed = document.getElementById('oauthNotAuthed');
+                const oauthAuthed = document.getElementById('oauthAuthed');
+                const configUserName = document.getElementById('configUserName');
+                
+                if (estado?.autenticado) {
+                    // Mostrar perfil de usuario, ocultar botón login
+                    if (loginBtn) loginBtn.style.display = 'none';
+                    if (userProfileCard) userProfileCard.style.display = 'block';
+                    
+                    // Actualizar info de usuario
+                    if (estado.usuario?.name) {
+                        if (userName) userName.textContent = estado.usuario.name;
+                        if (configUserName) configUserName.textContent = estado.usuario.name;
+                        // Actualizar avatar con inicial del nombre
+                        if (userAvatar) {
+                            const inicial = estado.usuario.name.charAt(0).toUpperCase();
+                            userAvatar.textContent = inicial;
+                        }
+                    }
+                    if (estado.usuario?.email && userEmail) {
+                        userEmail.textContent = estado.usuario.email;
+                    }
+                    
+                    // Mostrar sección autenticada en configuración
+                    if (oauthNotAuthed) oauthNotAuthed.style.display = 'none';
+                    if (oauthAuthed) oauthAuthed.style.display = 'block';
+                    
+                    // Actualizar información de sincronización
+                    if (estado.eventosCalendar !== undefined) {
+                        const countEl = document.getElementById('calendarEventCount');
+                        if (countEl) countEl.textContent = estado.eventosCalendar;
+                    }
+                    if (estado.archivosGDrive !== undefined) {
+                        const countEl = document.getElementById('driveFileCount');
+                        if (countEl) countEl.textContent = estado.archivosGDrive;
+                    }
+                    if (estado.ultimaSincronizacion) {
+                        const timeEl = document.getElementById('lastSyncTime');
+                        if (timeEl) timeEl.textContent = formatTimeAgo(estado.ultimaSincronizacion);
+                    }
+                } else {
+                    // Mostrar botón login, ocultar perfil
+                    if (loginBtn) loginBtn.style.display = 'flex';
+                    if (userProfileCard) userProfileCard.style.display = 'none';
+                    
+                    // Mostrar sección no autenticada en configuración
+                    if (oauthNotAuthed) oauthNotAuthed.style.display = 'block';
+                    if (oauthAuthed) oauthAuthed.style.display = 'none';
+                }
+            }, 100); // Esperar 100ms antes de actualizar
         }
         
         // Función auxiliar para formatear tiempo
@@ -621,16 +701,28 @@
             return date.toLocaleDateString('es-ES');
         }
         
-        // Escuchar cambios de autenticación
-        if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
-            // Actualizar inmediatamente
-            updateUserUI();
-            
-            // Escuchar eventos de OAuth
-            document.addEventListener('oauthLoginCompleto', updateUserUI);
-            document.addEventListener('oauthLoggedOut', updateUserUI);
-            document.addEventListener('syncCompleto', updateUserUI);
-            document.addEventListener('tokenRefreshed', updateUserUI);
+        // Escuchar cambios de autenticación - Esperar a que esté disponible
+        function inicializarEventosOAuth() {
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+                // Actualizar inmediatamente
+                updateUserUI();
+                
+                // Escuchar eventos de OAuth (solo cuando cambia el estado de autenticación)
+                document.addEventListener('oauthLoginCompleto', updateUserUI);
+                document.addEventListener('oauthLoggedOut', updateUserUI);
+                
+                console.log('✅ Eventos de OAuth configurados');
+            } else {
+                // Reintentar en 100ms
+                setTimeout(inicializarEventosOAuth, 100);
+            }
+        }
+        
+        // Iniciar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarEventosOAuth);
+        } else {
+            inicializarEventosOAuth();
         }
         
         // Actualizar UI cada 10 segundos también (por si hay cambios externos)
