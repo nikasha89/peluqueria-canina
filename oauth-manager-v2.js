@@ -104,8 +104,7 @@ class OAuthManager {
                 // Obtener información del usuario
                 this.obtenerInfoUsuario().then(() => {
                     console.log('✅ Usuario autenticado:', this.datosCache.usuario);
-                    this.sincronizarAutomatico();
-                    this.iniciarSincronizacionAutomatica();
+                    // Sincronización manual - no automática
                     this.emitirEvento('oauthLoginCompleto', { usuario: this.datosCache.usuario });
                 });
             }
@@ -147,8 +146,7 @@ class OAuthManager {
                 // Verificar si el token sigue válido
                 this.obtenerInfoUsuario().then(() => {
                     console.log('✅ Sesión restaurada');
-                    this.sincronizarAutomatico();
-                    this.iniciarSincronizacionAutomatica();
+                    // Sincronización manual - no automática
                     this.emitirEvento('oauthLoginCompleto', { usuario: this.datosCache.usuario });
                 }).catch(() => {
                     // Token expirado, limpiar
@@ -307,7 +305,7 @@ class OAuthManager {
     
     // ========== SINCRONIZACIÓN ==========
     
-    async sincronizarAutomatico() {
+    async sincronizarDrive() {
         if (!this.accessToken) {
             console.warn('No hay token de acceso para sincronizar');
             return null;
@@ -321,50 +319,27 @@ class OAuthManager {
         this.sincronizacionActiva = true;
         
         try {
-            // Sincronizar Calendar y Drive en paralelo
-            const [eventosCalendar, archivosDrive] = await Promise.all([
-                this.obtenerEventosCalendar(),
-                this.obtenerArchivosDrive()
-            ]);
+            console.log('🔄 Sincronizando con Google Drive...');
             
-            // Actualizar caché
-            this.datosCache.calendar = {
-                eventos: eventosCalendar,
-                count: eventosCalendar.length
-            };
+            const archivosDrive = await this.obtenerArchivosDrive();
+            
+            // Actualizar caché de Drive
             this.datosCache.drive = {
                 archivos: archivosDrive,
                 count: archivosDrive.length
             };
             
-            // Guardar en localStorage para persistencia
-            localStorage.setItem('oauth_cache', JSON.stringify({
-                calendar: this.datosCache.calendar,
-                drive: this.datosCache.drive,
-                timestamp: new Date().toISOString()
-            }));
-            
-            // Emitir evento de sincronización completa
-            this.emitirEvento('syncCompleto', {
-                calendar: this.datosCache.calendar,
-                drive: this.datosCache.drive,
-                timestamp: new Date().toISOString()
-            });
-            
-            console.log('✅ Sincronización completa:', {
-                eventos: eventosCalendar.length,
+            console.log('✅ Drive sincronizado:', {
                 archivos: archivosDrive.length
             });
             
             return {
-                calendar: eventosCalendar,
                 drive: archivosDrive
             };
             
         } catch (error) {
-            console.error('Error en sincronización automática:', error);
-            this.emitirEvento('syncError', { error: error.message });
-            return null;
+            console.error('Error en sincronización Drive:', error);
+            throw error;
         } finally {
             this.sincronizacionActiva = false;
         }
@@ -407,26 +382,8 @@ class OAuthManager {
         }
     }
     
-    iniciarSincronizacionAutomatica() {
-        if (this.intervaloSincronizacion) {
-            clearInterval(this.intervaloSincronizacion);
-        }
-        
-        // Sincronizar cada 5 minutos
-        this.intervaloSincronizacion = setInterval(() => {
-            this.sincronizarAutomatico();
-        }, 5 * 60 * 1000);
-        
-        console.log('✅ Sincronización automática iniciada (cada 5 minutos)');
-    }
-    
-    detenerSincronizacionAutomatica() {
-        if (this.intervaloSincronizacion) {
-            clearInterval(this.intervaloSincronizacion);
-            this.intervaloSincronizacion = null;
-            console.log('⏸️ Sincronización automática detenida');
-        }
-    }
+    // Sincronización manual - no automática
+    // Para sincronizar, el usuario debe hacer clic en los botones correspondientes
     
     // ========== GOOGLE CALENDAR ==========
     
@@ -453,6 +410,29 @@ class OAuthManager {
             
         } catch (error) {
             console.error('Error al crear evento:', error);
+            throw error;
+        }
+    }
+    
+    async obtenerEventoCalendar(eventId) {
+        if (!this.accessToken) {
+            throw new Error('No hay sesión activa');
+        }
+        
+        try {
+            const response = await gapi.client.calendar.events.get({
+                calendarId: 'primary',
+                eventId: eventId
+            });
+            
+            return response.result;
+            
+        } catch (error) {
+            // Si el evento no existe, retornar null
+            if (error.status === 404) {
+                return null;
+            }
+            console.error('Error al obtener evento:', error);
             throw error;
         }
     }
@@ -501,6 +481,52 @@ class OAuthManager {
             
         } catch (error) {
             console.error('Error al subir archivo:', error);
+            throw error;
+        }
+    }
+    
+    async buscarArchivosDrive(nombreArchivo) {
+        if (!this.accessToken) {
+            throw new Error('No hay sesión activa');
+        }
+        
+        try {
+            const response = await gapi.client.drive.files.list({
+                q: `name='${nombreArchivo}' and trashed=false`,
+                fields: 'files(id, name, createdTime, modifiedTime)',
+                spaces: 'drive'
+            });
+            
+            return response.result.files;
+            
+        } catch (error) {
+            console.error('Error al buscar archivos:', error);
+            throw error;
+        }
+    }
+    
+    async actualizarArchivoDrive(fileId, contenido) {
+        if (!this.accessToken) {
+            throw new Error('No hay sesión activa');
+        }
+        
+        try {
+            const response = await gapi.client.request({
+                path: `/upload/drive/v3/files/${fileId}`,
+                method: 'PATCH',
+                params: { uploadType: 'media' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: typeof contenido === 'string' ? contenido : JSON.stringify(contenido)
+            });
+            
+            console.log('✅ Archivo actualizado en Drive:', response.result);
+            
+            return response.result;
+            
+        } catch (error) {
+            console.error('Error al actualizar archivo:', error);
             throw error;
         }
     }

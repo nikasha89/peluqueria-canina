@@ -85,6 +85,24 @@ class OAuthIntegration {
         }
         
         try {
+            // Verificar si la cita ya tiene un evento en Google Calendar
+            if (cita.googleCalendarEventId) {
+                console.log('ℹ️ Esta cita ya tiene un evento en Calendar:', cita.googleCalendarEventId);
+                
+                // Verificar si el evento todavía existe en Google
+                try {
+                    const eventoExistente = await this.oauth.obtenerEventoCalendar(cita.googleCalendarEventId);
+                    if (eventoExistente) {
+                        console.log('✅ El evento ya existe en Google Calendar, no se duplicará');
+                        return eventoExistente;
+                    }
+                } catch (error) {
+                    // Si el evento no existe (fue eliminado), continuar para crear uno nuevo
+                    console.log('⚠️ El evento fue eliminado de Calendar, se creará uno nuevo');
+                    cita.googleCalendarEventId = null;
+                }
+            }
+            
             // Las citas tienen los datos directamente, no necesitamos buscar en clientes/servicios
             const nombreCliente = cita.clienteNombre || 'Cliente';
             const nombrePerro = cita.perroNombre || 'Perro';
@@ -163,19 +181,30 @@ class OAuthIntegration {
             };
             
             const contenido = JSON.stringify(backup, null, 2);
-            const nombreArchivo = `peluqueria-backup-${new Date().toISOString().split('T')[0]}.json`;
+            // Usar siempre el mismo nombre de archivo para sobreescribir
+            const nombreArchivo = 'peluqueria-canina-backup.json';
             
-            const resultado = await this.oauth.subirArchivoDrive(nombreArchivo, contenido);
+            // Buscar si ya existe un backup anterior
+            const archivosExistentes = await this.oauth.buscarArchivosDrive(nombreArchivo);
+            
+            let resultado;
+            if (archivosExistentes && archivosExistentes.length > 0) {
+                // Actualizar el archivo existente
+                console.log('📝 Actualizando backup existente...');
+                resultado = await this.oauth.actualizarArchivoDrive(archivosExistentes[0].id, contenido);
+            } else {
+                // Crear nuevo archivo
+                console.log('📝 Creando nuevo backup...');
+                resultado = await this.oauth.subirArchivoDrive(nombreArchivo, contenido);
+            }
             
             console.log('✅ Backup guardado en Google Drive:', resultado);
-            alert('✅ Backup guardado exitosamente en Google Drive');
             
             return resultado;
             
         } catch (error) {
             console.error('Error al hacer backup:', error);
-            alert('❌ Error al guardar backup: ' + error.message);
-            return null;
+            throw error;
         }
     }
     

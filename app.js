@@ -2093,13 +2093,49 @@ class PeluqueriaCanina {
                     return;
                 }
 
-                this.mostrarNotificacion(`✅ ${sincronizadas} citas sincronizadas con Google Calendar`);
+                if (sincronizadas > 0) {
+                    this.mostrarNotificacion(`✅ ${sincronizadas} cita${sincronizadas > 1 ? 's' : ''} sincronizada${sincronizadas > 1 ? 's' : ''} con Google Calendar`);
+                } else {
+                    this.mostrarNotificacion('ℹ️ Todas las citas ya estaban en Google Calendar');
+                }
             } else {
                 this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
             }
         } catch (error) {
             console.error('Error al sincronizar:', error);
             this.mostrarNotificacion('❌ Error al sincronizar con Google Calendar. Verifica tu conexión.');
+        }
+    }
+
+    // Google Drive Backup
+    async sincronizarConDrive() {
+        try {
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+                const estado = oauthIntegration.obtenerEstado();
+                
+                if (!estado.autenticado) {
+                    const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
+                    if (conectar && typeof oauthManager !== 'undefined') {
+                        await oauthManager.iniciarLoginGoogle();
+                    }
+                    return;
+                }
+                
+                this.mostrarNotificacion('💾 Creando backup en Google Drive...');
+                
+                const resultado = await oauthIntegration.hacerBackup();
+                
+                if (resultado) {
+                    this.mostrarNotificacion('✅ Backup guardado en Google Drive');
+                } else {
+                    this.mostrarNotificacion('⚠️ No se pudo crear el backup');
+                }
+            } else {
+                this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
+            }
+        } catch (error) {
+            console.error('Error al sincronizar con Drive:', error);
+            this.mostrarNotificacion('❌ Error al crear backup en Drive: ' + error.message);
         }
     }
 
