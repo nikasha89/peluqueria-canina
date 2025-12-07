@@ -116,7 +116,12 @@
                         <button class="btn btn-small" onclick="filtrarAgenda('todas')">Todas</button>
                         <button class="btn btn-small" onclick="filtrarAgenda('hoy')">Hoy</button>
                         <button class="btn btn-small" onclick="filtrarAgenda('semana')">Esta Semana</button>
-                        <button class="btn btn-small btn-sync" onclick="app.sincronizarConGoogle()">🔄 Sincronizar Google Calendar</button>
+                        <button class="btn btn-small btn-sync" onclick="app.sincronizarConGoogle()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                            📅 Sincronizar Calendar
+                        </button>
+                        <button class="btn btn-small btn-sync" onclick="app.sincronizarConDrive()" style="background: linear-gradient(135deg, #4285f4 0%, #34a853 100%); color: white; border: none;">
+                            💾 Backup Drive
+                        </button>
                     </div>
                 </div>
                 <div id="listaAgenda" class="lista-items"></div>

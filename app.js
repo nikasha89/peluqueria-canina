@@ -54,6 +54,9 @@ class PeluqueriaCanina {
         
         // Establecer fecha mínima a hoy
         document.getElementById('fecha').min = new Date().toISOString().split('T')[0];
+        
+        // Sincronización automática al inicio si está configurado Drive
+        this.sincronizarAlInicio();
     }
 
     // Razas por defecto
@@ -170,6 +173,11 @@ class PeluqueriaCanina {
     // Guardar y cargar datos
     guardarDatos(clave, datos) {
         localStorage.setItem(clave, JSON.stringify(datos));
+        
+        // Actualizar timestamp de última modificación para datos importantes
+        if (['citas', 'clientes', 'servicios', 'razas'].includes(clave)) {
+            localStorage.setItem('lastLocalUpdate', Date.now().toString());
+        }
     }
 
     cargarDatos(clave) {
@@ -971,7 +979,9 @@ class PeluqueriaCanina {
 
         try {
             const datosLocales = this.obtenerTodosDatos();
-            const timestampLocal = Date.now();
+            // Usar el timestamp de última modificación local
+            const lastLocalUpdate = localStorage.getItem('lastLocalUpdate');
+            const timestampLocal = lastLocalUpdate ? parseInt(lastLocalUpdate) : Date.now();
 
             // Buscar o crear archivo en Drive
             if (!this.driveFileId) {
@@ -985,8 +995,8 @@ class PeluqueriaCanina {
                 const timestampDrive = datosDrive.timestamp || 0;
                 
                 console.log('Comparando versiones:');
-                console.log('Local:', new Date(timestampLocal));
-                console.log('Drive:', new Date(timestampDrive));
+                console.log('Local:', new Date(timestampLocal).toLocaleString());
+                console.log('Drive:', new Date(timestampDrive).toLocaleString());
 
                 if (timestampLocal > timestampDrive) {
                     // Local es más reciente, subir a Drive
@@ -1012,6 +1022,81 @@ class PeluqueriaCanina {
         } catch (error) {
             console.error('Error en sincronización:', error);
             this.mostrarNotificacion('❌ Error al sincronizar: ' + error.message);
+        }
+    }
+
+    async sincronizarAlInicio() {
+        // Solo sincronizar si Drive está configurado
+        if (!this.driveConfig.clientId || !this.driveConfig.apiKey) {
+            console.log('Drive no configurado, omitiendo sincronización automática');
+            return;
+        }
+
+        try {
+            // Cargar el API de Google Drive
+            await this.cargarAPIGoogle();
+            
+            // Intentar autenticación silenciosa (sin popup)
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.driveConfig.clientId,
+                scope: 'https://www.googleapis.com/auth/drive.file',
+                callback: async (response) => {
+                    if (response.error) {
+                        console.log('No hay sesión activa de Drive, sincronización omitida');
+                        return;
+                    }
+                    
+                    this.driveToken = response;
+                    
+                    // Buscar archivo en Drive
+                    if (!this.driveFileId) {
+                        await this.buscarOCrearArchivoDrive();
+                    }
+                    
+                    if (!this.driveFileId) {
+                        console.log('No hay archivo de backup en Drive');
+                        return;
+                    }
+                    
+                    // Obtener datos de Drive
+                    const datosDrive = await this.obtenerDatosDrive();
+                    
+                    if (!datosDrive) {
+                        console.log('No hay datos en Drive para comparar');
+                        return;
+                    }
+                    
+                    // Obtener timestamp local
+                    const lastLocalUpdate = localStorage.getItem('lastLocalUpdate');
+                    const timestampLocal = lastLocalUpdate ? parseInt(lastLocalUpdate) : 0;
+                    const timestampDrive = datosDrive.timestamp || 0;
+                    
+                    console.log('🔄 Comprobando sincronización al inicio:');
+                    console.log('  Última modificación local:', timestampLocal ? new Date(timestampLocal).toLocaleString() : 'Nunca');
+                    console.log('  Última modificación Drive:', timestampDrive ? new Date(timestampDrive).toLocaleString() : 'Nunca');
+                    
+                    // Si Drive tiene datos más recientes, sincronizar automáticamente
+                    if (timestampDrive > timestampLocal) {
+                        console.log('📥 Drive tiene datos más recientes, sincronizando...');
+                        await this.descargarDatosDeDrive(datosDrive);
+                        this.mostrarNotificacion('📥 Datos actualizados desde Drive', 'success');
+                        this.lastSync = new Date().toISOString();
+                        this.guardarDatos('lastSync', this.lastSync);
+                        this.actualizarInfoSync();
+                    } else if (timestampLocal > timestampDrive) {
+                        console.log('📤 Datos locales más recientes que Drive');
+                    } else {
+                        console.log('✅ Datos sincronizados (misma versión)');
+                    }
+                }
+            });
+            
+            // Intentar obtener token de forma silenciosa
+            tokenClient.requestAccessToken({ prompt: '' });
+            
+        } catch (error) {
+            console.log('Error en sincronización automática al inicio:', error.message);
+            // No mostrar notificación de error al usuario para no interrumpir el inicio
         }
     }
 
@@ -1150,6 +1235,11 @@ class PeluqueriaCanina {
         if (razas) {
             this.razas = razas;
             this.guardarDatos('razas', this.razas);
+        }
+        
+        // Actualizar el timestamp local con el de Drive
+        if (datosDrive.timestamp) {
+            localStorage.setItem('lastLocalUpdate', datosDrive.timestamp.toString());
         }
 
         // Actualizar vistas
@@ -2093,13 +2183,49 @@ class PeluqueriaCanina {
                     return;
                 }
 
-                this.mostrarNotificacion(`✅ ${sincronizadas} citas sincronizadas con Google Calendar`);
+                if (sincronizadas > 0) {
+                    this.mostrarNotificacion(`✅ ${sincronizadas} cita${sincronizadas > 1 ? 's' : ''} sincronizada${sincronizadas > 1 ? 's' : ''} con Google Calendar`);
+                } else {
+                    this.mostrarNotificacion('ℹ️ Todas las citas ya estaban en Google Calendar');
+                }
             } else {
                 this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
             }
         } catch (error) {
             console.error('Error al sincronizar:', error);
             this.mostrarNotificacion('❌ Error al sincronizar con Google Calendar. Verifica tu conexión.');
+        }
+    }
+
+    // Google Drive Backup
+    async sincronizarConDrive() {
+        try {
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+                const estado = oauthIntegration.obtenerEstado();
+                
+                if (!estado.autenticado) {
+                    const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
+                    if (conectar && typeof oauthManager !== 'undefined') {
+                        await oauthManager.iniciarLoginGoogle();
+                    }
+                    return;
+                }
+                
+                this.mostrarNotificacion('💾 Creando backup en Google Drive...');
+                
+                const resultado = await oauthIntegration.hacerBackup();
+                
+                if (resultado) {
+                    this.mostrarNotificacion('✅ Backup guardado en Google Drive');
+                } else {
+                    this.mostrarNotificacion('⚠️ No se pudo crear el backup');
+                }
+            } else {
+                this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
+            }
+        } catch (error) {
+            console.error('Error al sincronizar con Drive:', error);
+            this.mostrarNotificacion('❌ Error al crear backup en Drive: ' + error.message);
         }
     }
 
