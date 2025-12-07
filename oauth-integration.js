@@ -51,7 +51,7 @@ class OAuthIntegration {
         });
     }
     
-    // ========== SINCRONIZACIÓN AUTOMÁTICA INTELIGENTE ==========
+    // ========== SINCRONIZACIÓN AUTOMÁTICA ==========
     
     async cargarBackupAutomatico() {
         if (!this.oauth.estaAutenticado()) {
@@ -73,100 +73,23 @@ class OAuthIntegration {
             
             if (!archivos || archivos.length === 0) {
                 console.log('ℹ️ No hay backup en Google Drive');
-                
-                // Verificar si hay datos locales para subir
-                const hayDatosLocales = app.citas.length > 0 || 
-                                       app.clientes.length > 0 || 
-                                       app.servicios.length > 3;
-                
-                if (hayDatosLocales) {
-                    console.log('📤 Subiendo datos locales a Google Drive...');
-                    await this.hacerBackup();
-                    app.mostrarNotificacion('📤 Datos locales guardados en Google Drive');
-                }
                 return;
             }
             
             const archivoBackup = archivos[0];
-            console.log('📦 Backup encontrado:', archivoBackup.name, 'Modificado:', archivoBackup.modifiedTime);
+            console.log('📦 Backup encontrado:', archivoBackup.name);
             
-            // Descargar el backup para obtener su fecha
+            // Descargar y restaurar el backup automáticamente
             const contenido = await this.oauth.descargarArchivoDrive(archivoBackup.id);
             const backup = JSON.parse(contenido);
-            const fechaBackupDrive = new Date(backup.fecha || archivoBackup.modifiedTime);
             
-            // Obtener la fecha de última modificación local
-            const fechaLocal = this.obtenerFechaUltimaModificacionLocal();
-            
-            console.log('📅 Comparando fechas:', {
-                drive: fechaBackupDrive.toISOString(),
-                local: fechaLocal ? fechaLocal.toISOString() : 'Sin datos locales'
-            });
-            
-            // Verificar si hay datos locales
-            const hayDatosLocales = app.citas.length > 0 || 
-                                   app.clientes.length > 0 || 
-                                   app.servicios.length > 3;
-            
-            if (!hayDatosLocales) {
-                // No hay datos locales, restaurar desde Drive
-                console.log('📥 No hay datos locales, restaurando desde Drive...');
-                await this.restaurarBackupDirecto(backup);
-                app.mostrarNotificacion('✅ Datos restaurados desde Google Drive');
-            } else if (!fechaLocal || fechaBackupDrive > fechaLocal) {
-                // El backup de Drive es más reciente
-                console.log('📥 Backup de Drive más reciente, restaurando...');
-                await this.restaurarBackupDirecto(backup);
-                app.mostrarNotificacion('✅ Datos actualizados desde Google Drive');
-            } else {
-                // Los datos locales son más recientes
-                console.log('📤 Datos locales más recientes, actualizando Drive...');
-                await this.hacerBackup();
-                app.mostrarNotificacion('📤 Google Drive actualizado con datos locales');
-            }
+            console.log('📥 Restaurando backup desde Google Drive...');
+            await this.restaurarBackupDirecto(backup);
+            app.mostrarNotificacion('✅ Datos restaurados desde Google Drive');
             
         } catch (error) {
             console.error('❌ Error en sincronización automática:', error);
             // No mostrar error al usuario, es un proceso en segundo plano
-        }
-    }
-    
-    obtenerFechaUltimaModificacionLocal() {
-        try {
-            // Intentar obtener la fecha del último backup guardado
-            const ultimaModificacion = localStorage.getItem('ultimaModificacion');
-            if (ultimaModificacion) {
-                return new Date(ultimaModificacion);
-            }
-            
-            // Si no existe, usar la fecha de la cita más reciente o cliente más reciente
-            const app = this.getApp();
-            if (!app) return null;
-            
-            let fechaMasReciente = null;
-            
-            // Verificar citas
-            app.citas.forEach(cita => {
-                const fecha = new Date(cita.fecha);
-                if (!fechaMasReciente || fecha > fechaMasReciente) {
-                    fechaMasReciente = fecha;
-                }
-            });
-            
-            // Verificar clientes (última visita)
-            app.clientes.forEach(cliente => {
-                if (cliente.ultimaVisita) {
-                    const fecha = new Date(cliente.ultimaVisita);
-                    if (!fechaMasReciente || fecha > fechaMasReciente) {
-                        fechaMasReciente = fecha;
-                    }
-                }
-            });
-            
-            return fechaMasReciente;
-        } catch (error) {
-            console.error('Error al obtener fecha local:', error);
-            return null;
         }
     }
     

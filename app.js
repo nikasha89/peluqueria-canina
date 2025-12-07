@@ -2401,6 +2401,10 @@ function cambiarTipoPrecio() {
 
 // Función global para filtrar agenda
 function filtrarAgenda(filtro) {
+    if (!window.app) {
+        console.warn('⚠️ App aún no está inicializada');
+        return;
+    }
     app.mostrarAgenda(filtro);
 }
 
@@ -2420,12 +2424,15 @@ function toggleListaRazas() {
 
 // Inicializar la aplicación
 let app;
+window.app = null; // Declarar globalmente desde el inicio
+
 document.addEventListener('DOMContentLoaded', () => {
     app = new PeluqueriaCanina();
     window.app = app; // Hacer disponible globalmente para OAuth
     
-    // Cargar configuración de Drive si existe
-    // if (app.cargarConfigDrive) {
-    //     app.cargarConfigDrive();
-    // }
+    console.log('✅ App inicializada:', {
+        citas: app.citas.length,
+        clientes: app.clientes.length,
+        servicios: app.servicios.length
+    });
 });
