@@ -33,6 +33,9 @@ setup.bat
 .env
 .env.local
 
+# Configuración con credenciales (NO subir)
+config.js
+
 # Capacitor
 capacitor.config.json (pero incluir configuración base si es necesaria)
 /.vs
