@@ -370,6 +370,65 @@ class OAuthIntegration {
         }
     }
     
+    // ========== AUTO-SINCRONIZACIÓN ==========
+    
+    async autoBackup() {
+        // Solo hacer backup si está autenticado
+        if (!this.oauth.estaAutenticado()) {
+            return;
+        }
+        
+        try {
+            await this.hacerBackup();
+            console.log('💾 Auto-backup completado');
+        } catch (error) {
+            console.error('Error en auto-backup:', error);
+        }
+    }
+    
+    async autoSincronizarCita(cita) {
+        if (!this.oauth.estaAutenticado()) {
+            return;
+        }
+        
+        try {
+            // Agregar/actualizar cita en Google Calendar
+            await this.oauth.crearEventoCalendar(
+                cita.clienteNombre + ' - ' + cita.perroNombre,
+                new Date(cita.fecha + 'T' + cita.hora),
+                new Date(new Date(cita.fecha + 'T' + cita.hora).getTime() + 60*60*1000), // 1 hora después
+                `Servicio: ${cita.servicio}\nPerro: ${cita.perroNombre} (${cita.raza})\nTeléfono: ${cita.telefono}\nPrecio: ${cita.precio}€`
+            );
+            
+            // Auto-backup a Drive
+            await this.autoBackup();
+            
+            console.log('✅ Cita auto-sincronizada con Google');
+        } catch (error) {
+            console.error('Error en auto-sincronización de cita:', error);
+        }
+    }
+    
+    async autoEliminarCita(cita) {
+        if (!this.oauth.estaAutenticado()) {
+            return;
+        }
+        
+        try {
+            // Si tiene eventId de Google Calendar, eliminarlo
+            if (cita.googleEventId) {
+                await this.oauth.eliminarEventoCalendar(cita.googleEventId);
+            }
+            
+            // Auto-backup a Drive
+            await this.autoBackup();
+            
+            console.log('✅ Cita auto-eliminada de Google');
+        } catch (error) {
+            console.error('Error en auto-eliminación de cita:', error);
+        }
+    }
+    
     // ========== ACTUALIZACIÓN DE UI ==========
     
     actualizarUI() {

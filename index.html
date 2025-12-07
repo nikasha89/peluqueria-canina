@@ -515,54 +515,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Sección Google Integration -->
-                <div class="config-section" style="margin-top: 40px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
-                    <h3>🔐 Google Integration</h3>
-                    <p class="config-description" style="color: rgba(255,255,255,0.9);">
-                        La sincronización con Google Calendar y Google Drive se maneja automáticamente después de autenticarte. Solo necesitas hacer clic en "Conectar" en la esquina superior derecha.
-                    </p>
-                    
-                    <div id="oauthStatusConfig" style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; color: #333;">
-                        <div id="oauthNotAuthed" style="display: none;">
-                            <p style="color: #f44336; margin: 0 0 15px 0; font-size: 15px; font-weight: 600;">❌ No autenticado</p>
-                            <p style="font-size: 13px; color: #666; margin: 0 0 15px 0; line-height: 1.5;">
-                                Haz clic en el botón <strong>"🔐 Conectar"</strong> en la esquina superior derecha para autenticarte con Google y habilitar la sincronización automática de citas y copias de seguridad.
-                            </p>
-                            <button class="btn btn-primary" onclick="oauthIntegration?.oauth?.iniciarLoginGoogle()" style="background: #667eea; border: none; color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                                🔐 Conectar con Google
-                            </button>
-                        </div>
-                        <div id="oauthAuthed" style="display: none;">
-                            <p style="color: #4caf50; margin: 0 0 15px 0; font-size: 15px; font-weight: 600;">✅ Autenticado como <span id="configUserName">usuario</span></p>
-                            <div style="margin-top: 15px; padding: 15px; background: #f5f5f5; border-radius: 6px; font-size: 13px; line-height: 1.8;">
-                                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                                    <span>📅</span>
-                                    <span><strong>Calendar:</strong> <span id="calendarEventCount">0</span> eventos sincronizados</span>
-                                </div>
-                                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                                    <span>📂</span>
-                                    <span><strong>Drive:</strong> <span id="driveFileCount">0</span> archivos disponibles</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span>⏰</span>
-                                    <span><strong>Última sincronización:</strong> <span id="lastSyncTime">Hace unos momentos</span></span>
-                                </div>
-                            </div>
-                            <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button class="btn btn-secondary" onclick="oauthIntegration?.hacerBackup()" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                                    💾 Backup Ahora
-                                </button>
-                                <button class="btn btn-sync" onclick="app.sincronizarManual()" style="background: #2196F3; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                                    🔄 Sincronizar
-                                </button>
-                                <button class="btn btn-secondary" onclick="app.desconectarDrive()" style="background: #f44336; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                                    🚪 Desconectar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </div>                                    🚪 Desconectar
                                 </button>
                             </div>

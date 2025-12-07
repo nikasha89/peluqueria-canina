@@ -625,6 +625,11 @@ class PeluqueriaCanina {
         this.guardarDatos('clientes', this.clientes);
         console.log('Clientes guardados:', this.clientes);
         
+        // Auto-backup a Google Drive
+        if (window.oauthIntegration) {
+            window.oauthIntegration.autoBackup();
+        }
+        
         document.getElementById('clienteForm').reset();
         document.getElementById('clienteEditId').value = '';
         document.getElementById('btnGuardarCliente').textContent = 'Guardar Cliente';
@@ -1401,9 +1406,9 @@ class PeluqueriaCanina {
         // Mostrar confirmación
         this.mostrarNotificacion('✅ Cita guardada correctamente');
 
-        // Sincronizar con Google Calendar si está autorizado
-        if (this.googleCalendarToken) {
-            this.agregarAGoogleCalendar(cita);
+        // Auto-sincronizar con Google Calendar y Drive
+        if (window.oauthIntegration) {
+            window.oauthIntegration.autoSincronizarCita(cita);
         }
 
         // Actualizar vistas
@@ -1651,9 +1656,9 @@ class PeluqueriaCanina {
         if (confirm('¿Estás seguro de que quieres eliminar esta cita?')) {
             const cita = this.citas.find(c => c.id === id);
             
-            // Eliminar de Google Calendar si está sincronizada
-            if (cita.googleEventId && this.googleCalendarToken) {
-                this.eliminarDeGoogleCalendar(cita.googleEventId);
+            // Auto-eliminar de Google Calendar
+            if (window.oauthIntegration) {
+                window.oauthIntegration.autoEliminarCita(cita);
             }
             
             this.citas = this.citas.filter(c => c.id !== id);
@@ -1885,6 +1890,11 @@ class PeluqueriaCanina {
             this.clientes = this.clientes.filter(c => c.id !== id);
             this.guardarDatos('clientes', this.clientes);
             
+            // Auto-backup a Google Drive
+            if (window.oauthIntegration) {
+                window.oauthIntegration.autoBackup();
+            }
+            
             this.mostrarClientes();
             this.mostrarAgenda();
             this.actualizarEstadisticas();
@@ -1937,6 +1947,12 @@ class PeluqueriaCanina {
         }
 
         this.guardarDatos('servicios', this.servicios);
+        
+        // Auto-backup a Google Drive
+        if (window.oauthIntegration) {
+            window.oauthIntegration.autoBackup();
+        }
+        
         document.getElementById('servicioForm').reset();
         document.getElementById('servicioEditId').value = '';
         document.getElementById('btnGuardarServicio').textContent = 'Agregar Servicio';
@@ -2156,6 +2172,12 @@ class PeluqueriaCanina {
         if (confirm('¿Estás seguro de que quieres eliminar este servicio?')) {
             this.servicios = this.servicios.filter(s => s.id !== id);
             this.guardarDatos('servicios', this.servicios);
+            
+            // Auto-backup a Google Drive
+            if (window.oauthIntegration) {
+                window.oauthIntegration.autoBackup();
+            }
+            
             this.mostrarServicios();
             this.cargarServicios();
             this.mostrarNotificacion('🗑️ Servicio eliminado');
