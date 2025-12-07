@@ -6,10 +6,12 @@
 
 class OAuthManager {
     constructor() {
-        // Configuración de Google OAuth (se pueden cambiar desde la UI)
-        this.config = this.cargarConfig() || {
-            clientId: '336593129164-givp069psmaqa62a59q554vp9crllmhs.apps.googleusercontent.com',
-            apiKey: 'AIzaSyCP5OulWWTt9bALpokZaYdTdiz0vBmJTQc',
+        // Cargar configuración desde config.js (o usar fallback)
+        const externalConfig = window.APP_CONFIG?.google;
+        
+        this.config = this.cargarConfig() || externalConfig || {
+            clientId: 'TU_CLIENT_ID_AQUI.apps.googleusercontent.com',
+            apiKey: 'TU_API_KEY_AQUI',
             discoveryDocs: [
                 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
                 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
@@ -22,6 +24,11 @@ class OAuthManager {
                 'https://www.googleapis.com/auth/userinfo.profile'
             ].join(' ')
         };
+        
+        // Verificar que las credenciales están configuradas
+        if (this.config.clientId.includes('TU_CLIENT_ID') || this.config.apiKey.includes('TU_API_KEY')) {
+            console.warn('⚠️ CREDENCIALES NO CONFIGURADAS: Copia config.sample.js a config.js y añade tus credenciales');
+        }
         
         this.tokenClient = null;
         this.gapiInited = false;
