@@ -35,3 +35,4 @@ setup.bat
 
 # Capacitor
 capacitor.config.json (pero incluir configuración base si es necesaria)
+/.vs

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Cara del perro -->
+  <circle cx="50" cy="50" r="35" fill="#D2691E"/>
+  
+  <!-- Orejas -->
+  <ellipse cx="25" cy="30" rx="12" ry="20" fill="#8B4513"/>
+  <ellipse cx="75" cy="30" rx="12" ry="20" fill="#8B4513"/>
+  
+  <!-- Ojos -->
+  <circle cx="38" cy="45" r="5" fill="#000"/>
+  <circle cx="62" cy="45" r="5" fill="#000"/>
+  <circle cx="40" cy="43" r="2" fill="#fff"/>
+  <circle cx="64" cy="43" r="2" fill="#fff"/>
+  
+  <!-- Hocico -->
+  <ellipse cx="50" cy="60" rx="15" ry="12" fill="#F5DEB3"/>
+  
+  <!-- Nariz -->
+  <ellipse cx="50" cy="58" rx="6" ry="5" fill="#000"/>
+  
+  <!-- Boca -->
+  <path d="M 50 63 Q 45 68 40 65" stroke="#000" fill="none" stroke-width="2"/>
+  <path d="M 50 63 Q 55 68 60 65" stroke="#000" fill="none" stroke-width="2"/>
+  
+  <!-- Lengua -->
+  <ellipse cx="50" cy="70" rx="4" ry="3" fill="#FF69B4"/>
+</svg>

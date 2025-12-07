@@ -43,7 +43,7 @@ const sessions = new Map();
  * Endpoint 1: Obtener URL de autenticación
  * El frontend redirige al usuario aquí
  */
-app.get('/auth/google/login', (req, res) => {
+app.get('/api/oauth/auth-url', (req, res) => {
     const scopes = [
         'https://www.googleapis.com/auth/calendar.readonly',
         'https://www.googleapis.com/auth/calendar.events',
@@ -58,7 +58,8 @@ app.get('/auth/google/login', (req, res) => {
         `redirect_uri=${GOOGLE_REDIRECT_URI}&` +
         `response_type=code&` +
         `scope=${scopes.join(' ')}&` +
-        `access_type=offline`;
+        `access_type=offline&` +
+        `prompt=consent`;
 
     res.json({ authUrl });
 });
@@ -67,7 +68,46 @@ app.get('/auth/google/login', (req, res) => {
  * Endpoint 2: Callback de Google (maneja el código de autorización)
  */
 app.get('/auth/google/callback', async (req, res) => {
-    const { code } = req.query;
+    const { code, error } = req.query;
+
+    if (error) {
+        // Redirigir con error
+        return res.send(`
+            <html>
+                <body>
+                    <script>
+                        window.opener.postMessage({ type: 'oauth-error', error: '${error}' }, '*');
+                        window.close();
+                    </script>
+                    <p>Error de autenticación. Puedes cerrar esta ventana.</p>
+                </body>
+            </html>
+        `);
+    }
+
+    if (!code) {
+        return res.status(400).send('No authorization code provided');
+    }
+
+    // Enviar código de vuelta a la ventana principal
+    res.send(`
+        <html>
+            <body>
+                <script>
+                    window.opener.postMessage({ type: 'oauth-callback', code: '${code}' }, '*');
+                    window.close();
+                </script>
+                <p>Autenticación exitosa. Puedes cerrar esta ventana.</p>
+            </body>
+        </html>
+    `);
+});
+
+/**
+ * Endpoint 2b: Procesar código de autorización
+ */
+app.post('/api/oauth/callback', async (req, res) => {
+    const { code } = req.body;
 
     if (!code) {
         return res.status(400).json({ error: 'No authorization code provided' });
@@ -107,18 +147,48 @@ app.get('/auth/google/callback', async (req, res) => {
             createdAt: Date.now()
         });
 
-        // Redirigir de vuelta a la app con sesión
-        const redirectUrl = `${req.headers.referer || 'http://localhost:8100'}?session=${sessionId}`;
-        res.redirect(redirectUrl);
+        res.json({ 
+            sessionId,
+            usuario: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                picture: user.picture
+            }
+        });
 
     } catch (error) {
-        console.error('OAuth Error:', error);
+        console.error('OAuth Error:', error.response?.data || error.message);
         res.status(500).json({ error: 'Authentication failed', details: error.message });
     }
 });
 
 /**
- * Endpoint 3: Obtener token de acceso (verificando la sesión)
+ * Endpoint 3: Verificar sesión
+ */
+app.post('/api/oauth/verify', (req, res) => {
+    const { sessionId } = req.body;
+
+    if (!sessionId || !sessions.has(sessionId)) {
+        return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const session = sessions.get(sessionId);
+
+    // Verificar si el token expiró
+    if (Date.now() > session.expiresAt) {
+        sessions.delete(sessionId);
+        return res.status(401).json({ error: 'Session expired' });
+    }
+
+    res.json({
+        valid: true,
+        usuario: session.user
+    });
+});
+
+/**
+ * Endpoint 4: Obtener token de acceso (verificando la sesión)
  */
 app.post('/auth/google/token', (req, res) => {
     const { sessionId } = req.body;
@@ -142,7 +212,7 @@ app.post('/auth/google/token', (req, res) => {
 });
 
 /**
- * Endpoint 4: Refrescar token
+ * Endpoint 5: Refrescar token
  */
 app.post('/auth/google/refresh', async (req, res) => {
     const { sessionId } = req.body;
@@ -176,9 +246,9 @@ app.post('/auth/google/refresh', async (req, res) => {
 });
 
 /**
- * Endpoint 5: Logout
+ * Endpoint 6: Logout
  */
-app.post('/auth/google/logout', (req, res) => {
+app.post('/api/oauth/logout', (req, res) => {
     const { sessionId } = req.body;
 
     if (sessionId && sessions.has(sessionId)) {
@@ -189,7 +259,7 @@ app.post('/auth/google/logout', (req, res) => {
 });
 
 /**
- * Endpoint 6: Obtener perfil de usuario
+ * Endpoint 7: Obtener perfil de usuario
  */
 app.get('/auth/profile', (req, res) => {
     const sessionId = req.headers['x-session-id'];
@@ -203,167 +273,14 @@ app.get('/auth/profile', (req, res) => {
 });
 
 /**
- * Endpoint 7: Obtener eventos del calendario
- * GET /calendar/events?sessionId=...&timeMin=...&timeMax=...&maxResults=50
+ * Endpoint 8: Sincronizar todos los datos (Calendar + Drive)
  */
-app.get('/calendar/events', async (req, res) => {
-    try {
-        const { sessionId, timeMin, timeMax, maxResults = 50 } = req.query;
-        const session = sessions.get(sessionId);
-        
-        if (!session || !session.tokens.access_token) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        const response = await axios.get(`${GOOGLE_CALENDAR_URL}/calendars/primary/events`, {
-            headers: {
-                'Authorization': `Bearer ${session.tokens.access_token}`,
-                'Content-Type': 'application/json'
-            },
-            params: {
-                timeMin: timeMin || new Date().toISOString(),
-                timeMax: timeMax,
-                maxResults: maxResults,
-                singleEvents: true,
-                orderBy: 'startTime'
-            }
-        });
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Calendar error:', error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: 'Failed to fetch calendar events',
-            message: error.message 
-        });
-    }
-});
-
-/**
- * Endpoint 8: Crear evento en calendario
- * POST /calendar/events
- */
-app.post('/calendar/events', async (req, res) => {
-    try {
-        const { sessionId, event } = req.body;
-        const session = sessions.get(sessionId);
-        
-        if (!session || !session.tokens.access_token) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        const response = await axios.post(
-            `${GOOGLE_CALENDAR_URL}/calendars/primary/events`,
-            event,
-            {
-                headers: {
-                    'Authorization': `Bearer ${session.tokens.access_token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Calendar create error:', error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: 'Failed to create calendar event',
-            message: error.message 
-        });
-    }
-});
-
-/**
- * Endpoint 9: Obtener archivos de Google Drive
- * GET /drive/files?sessionId=...&query=...&pageSize=10
- */
-app.get('/drive/files', async (req, res) => {
-    try {
-        const { sessionId, query = "trashed=false", pageSize = 10 } = req.query;
-        const session = sessions.get(sessionId);
-        
-        if (!session || !session.tokens.access_token) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        const response = await axios.get(`${GOOGLE_DRIVE_URL}/files`, {
-            headers: {
-                'Authorization': `Bearer ${session.tokens.access_token}`,
-                'Content-Type': 'application/json'
-            },
-            params: {
-                q: query,
-                spaces: 'drive',
-                pageSize: pageSize,
-                fields: 'files(id, name, mimeType, webViewLink, createdTime, modifiedTime, size)'
-            }
-        });
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Drive error:', error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: 'Failed to fetch drive files',
-            message: error.message 
-        });
-    }
-});
-
-/**
- * Endpoint 10: Subir archivo a Google Drive
- * POST /drive/upload - multipart/form-data
- */
-app.post('/drive/upload', async (req, res) => {
-    try {
-        const { sessionId, fileName, mimeType = 'application/json' } = req.body;
-        const fileContent = req.body.content;
-        
-        const session = sessions.get(sessionId);
-        
-        if (!session || !session.tokens.access_token) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        // Crear metadata del archivo
-        const metadata = {
-            name: fileName,
-            mimeType: mimeType
-        };
-
-        const response = await axios.post(
-            `${GOOGLE_DRIVE_URL}/files?uploadType=multipart`,
-            {
-                metadata: metadata,
-                content: fileContent
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${session.tokens.access_token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Drive upload error:', error.message);
-        res.status(error.response?.status || 500).json({ 
-            error: 'Failed to upload file to drive',
-            message: error.message 
-        });
-    }
-});
-
-/**
- * Endpoint 11: Auto-sincronizar datos (Calendar + Drive)
- * POST /sync/auto - Sincroniza automáticamente al login
- */
-app.post('/sync/auto', async (req, res) => {
+app.post('/api/sync/all', async (req, res) => {
     try {
         const { sessionId } = req.body;
         const session = sessions.get(sessionId);
         
-        if (!session || !session.tokens.access_token) {
+        if (!session || !session.accessToken) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
@@ -375,7 +292,7 @@ app.post('/sync/auto', async (req, res) => {
             `${GOOGLE_CALENDAR_URL}/calendars/primary/events`,
             {
                 headers: {
-                    'Authorization': `Bearer ${session.tokens.access_token}`,
+                    'Authorization': `Bearer ${session.accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 params: {
@@ -393,11 +310,11 @@ app.post('/sync/auto', async (req, res) => {
             `${GOOGLE_DRIVE_URL}/files`,
             {
                 headers: {
-                    'Authorization': `Bearer ${session.tokens.access_token}`,
+                    'Authorization': `Bearer ${session.accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 params: {
-                    q: "trashed=false and (mimeType contains 'spreadsheet' or name contains 'backup')",
+                    q: "trashed=false",
                     spaces: 'drive',
                     pageSize: 10,
                     orderBy: 'modifiedTime desc',
@@ -408,20 +325,168 @@ app.post('/sync/auto', async (req, res) => {
 
         res.json({
             success: true,
-            calendar: {
-                events: calendarResponse.data.items || [],
-                count: (calendarResponse.data.items || []).length
-            },
-            drive: {
-                files: driveResponse.data.files || [],
-                count: (driveResponse.data.files || []).length
-            },
+            calendar: calendarResponse.data.items || [],
+            drive: driveResponse.data.files || [],
             syncTime: new Date().toISOString()
         });
     } catch (error) {
-        console.error('Auto sync error:', error.message);
+        console.error('Sync error:', error.response?.data || error.message);
         res.status(error.response?.status || 500).json({ 
-            error: 'Failed to auto-sync data',
+            error: 'Failed to sync data',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Endpoint 9: Crear evento en calendario
+ */
+app.post('/api/calendar/create', async (req, res) => {
+    try {
+        const { sessionId, evento } = req.body;
+        const session = sessions.get(sessionId);
+        
+        if (!session || !session.accessToken) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const response = await axios.post(
+            `${GOOGLE_CALENDAR_URL}/calendars/primary/events`,
+            evento,
+            {
+                headers: {
+                    'Authorization': `Bearer ${session.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        res.json({ evento: response.data });
+    } catch (error) {
+        console.error('Calendar create error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to create calendar event',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Endpoint 10: Subir archivo a Google Drive
+ */
+app.post('/api/drive/upload', async (req, res) => {
+    try {
+        const { sessionId, fileName, content } = req.body;
+        const session = sessions.get(sessionId);
+        
+        if (!session || !session.accessToken) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Primero crear el archivo vacío
+        const metadata = {
+            name: fileName,
+            mimeType: 'application/json'
+        };
+
+        const createResponse = await axios.post(
+            `${GOOGLE_DRIVE_URL}/files`,
+            metadata,
+            {
+                headers: {
+                    'Authorization': `Bearer ${session.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        const fileId = createResponse.data.id;
+
+        // Luego subir el contenido
+        await axios.patch(
+            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+            content,
+            {
+                headers: {
+                    'Authorization': `Bearer ${session.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        res.json({ file: createResponse.data });
+    } catch (error) {
+        console.error('Drive upload error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to upload file to drive',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Endpoint 11: Descargar archivo de Google Drive
+ */
+app.post('/api/drive/download', async (req, res) => {
+    try {
+        const { sessionId, fileId } = req.body;
+        const session = sessions.get(sessionId);
+        
+        if (!session || !session.accessToken) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const response = await axios.get(
+            `${GOOGLE_DRIVE_URL}/files/${fileId}?alt=media`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${session.accessToken}`
+                }
+            }
+        );
+
+        res.json({ content: response.data });
+    } catch (error) {
+        console.error('Drive download error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to download file from drive',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Endpoint 12: Obtener eventos del calendario (legacy)
+ * GET /calendar/events?sessionId=...&timeMin=...&timeMax=...&maxResults=50
+ */
+app.get('/calendar/events', async (req, res) => {
+    try {
+        const { sessionId, timeMin, timeMax, maxResults = 50 } = req.query;
+        const session = sessions.get(sessionId);
+        
+        if (!session || !session.accessToken) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const response = await axios.get(`${GOOGLE_CALENDAR_URL}/calendars/primary/events`, {
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            params: {
+                timeMin: timeMin || new Date().toISOString(),
+                timeMax: timeMax,
+                maxResults: maxResults,
+                singleEvents: true,
+                orderBy: 'startTime'
+            }
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error('Calendar error:', error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch calendar events',
             message: error.message 
         });
     }
