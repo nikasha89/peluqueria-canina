@@ -24,9 +24,12 @@ class OAuthIntegration {
     
     configurarEventosOAuth() {
         // Evento de login completo
-        window.addEventListener('oauthLoginCompleto', (e) => {
+        window.addEventListener('oauthLoginCompleto', async (e) => {
             console.log('✅ Usuario autenticado:', e.detail.usuario);
             this.actualizarUI();
+            
+            // Cargar automáticamente el backup de Google Drive si existe
+            await this.cargarBackupAutomatico();
         });
         
         // Evento de logout
@@ -46,6 +49,171 @@ class OAuthIntegration {
         window.addEventListener('syncError', (e) => {
             console.error('❌ Error en sincronización:', e.detail.error);
         });
+    }
+    
+    // ========== SINCRONIZACIÓN AUTOMÁTICA INTELIGENTE ==========
+    
+    async cargarBackupAutomatico() {
+        if (!this.oauth.estaAutenticado()) {
+            return;
+        }
+        
+        const app = this.getApp();
+        if (!app) {
+            console.log('⏳ App no disponible aún para cargar backup');
+            return;
+        }
+        
+        try {
+            console.log('🔍 Buscando backup en Google Drive...');
+            
+            // Buscar el archivo de backup
+            const nombreArchivo = 'peluqueria-canina-backup.json';
+            const archivos = await this.oauth.buscarArchivosDrive(nombreArchivo);
+            
+            if (!archivos || archivos.length === 0) {
+                console.log('ℹ️ No hay backup en Google Drive');
+                
+                // Verificar si hay datos locales para subir
+                const hayDatosLocales = app.citas.length > 0 || 
+                                       app.clientes.length > 0 || 
+                                       app.servicios.length > 3;
+                
+                if (hayDatosLocales) {
+                    console.log('📤 Subiendo datos locales a Google Drive...');
+                    await this.hacerBackup();
+                    app.mostrarNotificacion('📤 Datos locales guardados en Google Drive');
+                }
+                return;
+            }
+            
+            const archivoBackup = archivos[0];
+            console.log('📦 Backup encontrado:', archivoBackup.name, 'Modificado:', archivoBackup.modifiedTime);
+            
+            // Descargar el backup para obtener su fecha
+            const contenido = await this.oauth.descargarArchivoDrive(archivoBackup.id);
+            const backup = JSON.parse(contenido);
+            const fechaBackupDrive = new Date(backup.fecha || archivoBackup.modifiedTime);
+            
+            // Obtener la fecha de última modificación local
+            const fechaLocal = this.obtenerFechaUltimaModificacionLocal();
+            
+            console.log('📅 Comparando fechas:', {
+                drive: fechaBackupDrive.toISOString(),
+                local: fechaLocal ? fechaLocal.toISOString() : 'Sin datos locales'
+            });
+            
+            // Verificar si hay datos locales
+            const hayDatosLocales = app.citas.length > 0 || 
+                                   app.clientes.length > 0 || 
+                                   app.servicios.length > 3;
+            
+            if (!hayDatosLocales) {
+                // No hay datos locales, restaurar desde Drive
+                console.log('📥 No hay datos locales, restaurando desde Drive...');
+                await this.restaurarBackupDirecto(backup);
+                app.mostrarNotificacion('✅ Datos restaurados desde Google Drive');
+            } else if (!fechaLocal || fechaBackupDrive > fechaLocal) {
+                // El backup de Drive es más reciente
+                console.log('📥 Backup de Drive más reciente, restaurando...');
+                await this.restaurarBackupDirecto(backup);
+                app.mostrarNotificacion('✅ Datos actualizados desde Google Drive');
+            } else {
+                // Los datos locales son más recientes
+                console.log('📤 Datos locales más recientes, actualizando Drive...');
+                await this.hacerBackup();
+                app.mostrarNotificacion('📤 Google Drive actualizado con datos locales');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error en sincronización automática:', error);
+            // No mostrar error al usuario, es un proceso en segundo plano
+        }
+    }
+    
+    obtenerFechaUltimaModificacionLocal() {
+        try {
+            // Intentar obtener la fecha del último backup guardado
+            const ultimaModificacion = localStorage.getItem('ultimaModificacion');
+            if (ultimaModificacion) {
+                return new Date(ultimaModificacion);
+            }
+            
+            // Si no existe, usar la fecha de la cita más reciente o cliente más reciente
+            const app = this.getApp();
+            if (!app) return null;
+            
+            let fechaMasReciente = null;
+            
+            // Verificar citas
+            app.citas.forEach(cita => {
+                const fecha = new Date(cita.fecha);
+                if (!fechaMasReciente || fecha > fechaMasReciente) {
+                    fechaMasReciente = fecha;
+                }
+            });
+            
+            // Verificar clientes (última visita)
+            app.clientes.forEach(cliente => {
+                if (cliente.ultimaVisita) {
+                    const fecha = new Date(cliente.ultimaVisita);
+                    if (!fechaMasReciente || fecha > fechaMasReciente) {
+                        fechaMasReciente = fecha;
+                    }
+                }
+            });
+            
+            return fechaMasReciente;
+        } catch (error) {
+            console.error('Error al obtener fecha local:', error);
+            return null;
+        }
+    }
+    
+    async restaurarBackupDirecto(backup) {
+        const app = this.getApp();
+        if (!app) return false;
+        
+        try {
+            // Restaurar datos
+            app.citas = backup.datos.citas || [];
+            app.clientes = backup.datos.clientes || [];
+            app.servicios = backup.datos.servicios || [];
+            app.razas = backup.datos.razas || [];
+            
+            console.log('📦 Datos restaurados del backup:', {
+                citas: app.citas.length,
+                clientes: app.clientes.length,
+                servicios: app.servicios.length,
+                razas: app.razas.length
+            });
+            
+            // Guardar en localStorage
+            app.guardarDatos('citas', app.citas);
+            app.guardarDatos('clientes', app.clientes);
+            app.guardarDatos('servicios', app.servicios);
+            app.guardarDatos('razas', app.razas);
+            
+            // Guardar marca de tiempo de sincronización
+            localStorage.setItem('ultimaModificacion', backup.fecha || new Date().toISOString());
+            
+            // Actualizar la interfaz
+            app.cargarServicios();
+            app.cargarClientesEnSelect();
+            app.cargarRazasEnSelects();
+            app.mostrarServicios();
+            app.mostrarAgenda('semana');
+            app.mostrarClientes();
+            app.mostrarRazas();
+            app.actualizarEstadisticas();
+            
+            console.log('✅ Backup restaurado correctamente');
+            return true;
+            
+        } catch (error) {
+            console.error('Error al restaurar backup:', error);
+            return false;
+        }
     }
     
     // ========== INTEGRACIÓN CON CALENDAR ==========
@@ -169,9 +337,10 @@ class OAuthIntegration {
         
         try {
             // Crear backup completo
+            const fechaBackup = new Date().toISOString();
             const backup = {
                 version: '1.0',
-                fecha: new Date().toISOString(),
+                fecha: fechaBackup,
                 datos: {
                     citas: app.citas,
                     clientes: app.clientes,
@@ -198,6 +367,9 @@ class OAuthIntegration {
                 resultado = await this.oauth.subirArchivoDrive(nombreArchivo, contenido);
             }
             
+            // Guardar marca de tiempo local
+            localStorage.setItem('ultimaModificacion', fechaBackup);
+            
             console.log('✅ Backup guardado en Google Drive:', resultado);
             
             return resultado;
@@ -208,7 +380,7 @@ class OAuthIntegration {
         }
     }
     
-    async restaurarBackup(fileId) {
+    async restaurarBackup(fileId, yaConfirmado = false) {
         if (!this.oauth.estaAutenticado()) {
             alert('⚠️ Debes autenticarte con Google primero');
             return false;
@@ -224,9 +396,11 @@ class OAuthIntegration {
             const contenido = await this.oauth.descargarArchivoDrive(fileId);
             const backup = JSON.parse(contenido);
             
-            // Confirmar restauración
-            if (!confirm('⚠️ ¿Estás seguro de que quieres restaurar este backup? Se sobrescribirán todos los datos actuales.')) {
-                return false;
+            // Confirmar restauración solo si no fue confirmado previamente
+            if (!yaConfirmado) {
+                if (!confirm('⚠️ ¿Estás seguro de que quieres restaurar este backup? Se sobrescribirán todos los datos actuales.')) {
+                    return false;
+                }
             }
             
             // Restaurar datos
@@ -235,6 +409,13 @@ class OAuthIntegration {
             app.servicios = backup.datos.servicios || [];
             app.razas = backup.datos.razas || [];
             
+            console.log('📦 Datos restaurados del backup:', {
+                citas: app.citas.length,
+                clientes: app.clientes.length,
+                servicios: app.servicios.length,
+                razas: app.razas.length
+            });
+            
             // Guardar en localStorage
             app.guardarDatos('citas', app.citas);
             app.guardarDatos('clientes', app.clientes);
@@ -242,14 +423,20 @@ class OAuthIntegration {
             app.guardarDatos('razas', app.razas);
             
             // Actualizar la interfaz
+            app.cargarServicios();
+            app.cargarClientesEnSelect();
+            app.cargarRazasEnSelects();
+            app.mostrarServicios();
             app.mostrarAgenda('semana');
             app.mostrarClientes();
-            app.mostrarServicios();
             app.mostrarRazas();
             app.actualizarEstadisticas();
             
             console.log('✅ Backup restaurado correctamente');
-            alert('✅ Backup restaurado exitosamente');
+            
+            if (!yaConfirmado) {
+                alert('✅ Backup restaurado exitosamente');
+            }
             
             return true;
             

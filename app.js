@@ -176,7 +176,7 @@ class PeluqueriaCanina {
         
         // Actualizar timestamp de última modificación para datos importantes
         if (['citas', 'clientes', 'servicios', 'razas'].includes(clave)) {
-            localStorage.setItem('lastLocalUpdate', Date.now().toString());
+            localStorage.setItem('ultimaModificacion', new Date().toISOString());
         }
     }
 
@@ -1264,12 +1264,31 @@ class PeluqueriaCanina {
     }
 
     sincronizarManual() {
-        if (!this.driveConfig.clientId || !this.driveConfig.apiKey) {
-            this.mostrarNotificacion('⚠️ Configura primero Google Drive en la sección de Configuración');
-            return;
+        // Usar el nuevo sistema OAuth
+        if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+            const estado = oauthIntegration.obtenerEstado();
+            
+            if (!estado.autenticado) {
+                const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
+                if (conectar && typeof oauthManager !== 'undefined') {
+                    oauthManager.iniciarLoginGoogle();
+                }
+                return;
+            }
+            
+            // Realizar sincronización completa
+            this.sincronizarConDrive();
+        } else {
+            this.mostrarNotificacion('⚠️ Sistema OAuth no disponible. Recarga la página.');
         }
+    }
 
-        this.sincronizarConDrive();
+    desconectarDrive() {
+        this.driveToken = null;
+        this.driveFileId = null;
+        this.guardarDatos('driveFileId', null);
+        this.actualizarInfoSync();
+        this.mostrarNotificacion('🚪 Desconectado de Google Drive');
     }
 
     actualizarEstadoDrive(mensaje = null) {

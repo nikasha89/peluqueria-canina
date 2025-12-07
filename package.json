@@ -4,6 +4,7 @@
   "description": "Sistema de Gestión de Peluquería Canina",
   "main": "oauth-server.js",
   "scripts": {
+    "start": "npx http-server -p 8100 -c-1",
     "build": "echo 'App ready for Capacitor'",
     "cap:add:android": "capacitor add android",
     "cap:open:android": "capacitor open android",
