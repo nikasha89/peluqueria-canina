@@ -137,7 +137,8 @@ class OAuthIntegration {
             }
             
             if (!this.capacitorReady || !this.googleAuth) {
-                throw new Error('El plugin aún no está listo. Espera un momento e intenta de nuevo.');
+                alert('⏳ El plugin de Google Auth aún no está listo.\n\nEspera un momento e intenta de nuevo.');
+                throw new Error('El plugin aún no está listo');
             }
             
             console.log('🔐 Llamando a GoogleAuth.signIn()...');
@@ -146,6 +147,7 @@ class OAuthIntegration {
             const user = await this.googleAuth.signIn();
             
             console.log('✅ SignIn exitoso:', user);
+            console.log('✅ User data:', JSON.stringify(user, null, 2));
             
             // Validar respuesta
             if (!user) {
@@ -153,7 +155,8 @@ class OAuthIntegration {
             }
             
             if (!user.authentication) {
-                throw new Error('No se recibió autenticación');
+                console.error('❌ No hay authentication en user:', user);
+                throw new Error('No se recibió token de autenticación');
             }
             
             // Guardar usuario
@@ -172,29 +175,51 @@ class OAuthIntegration {
             }));
             
             console.log('✅ Login completado correctamente');
+            alert('✅ Login exitoso!\n\nUsuario: ' + (user.email || 'Sin email'));
             return user;
             
         } catch (error) {
             console.error('❌ Error en loginNativo:');
-            console.error('  Mensaje:', error.message || error);
+            console.error('  Error completo:', error);
+            console.error('  Mensaje:', error.message || 'sin mensaje');
             console.error('  Código:', error.code || 'sin código');
-            console.error('  Stack:', error.stack);
+            console.error('  Error tipo:', typeof error);
+            console.error('  Error keys:', Object.keys(error));
+            
+            // Intentar extraer más info del error
+            let errorInfo = '';
+            try {
+                errorInfo = JSON.stringify(error, null, 2);
+            } catch (e) {
+                errorInfo = String(error);
+            }
+            console.error('  Error JSON:', errorInfo);
             
             // Mensajes amigables
-            let mensaje = error.message || 'Error desconocido';
+            let mensaje = error.message || error.toString() || 'Error desconocido';
+            let codigo = error.code || '';
             
-            if (mensaje.includes('12501') || mensaje.toLowerCase().includes('cancel')) {
+            // Código 12501 = Usuario canceló
+            if (codigo === '12501' || codigo === 12501 || mensaje.includes('12501') || mensaje.toLowerCase().includes('cancel')) {
                 console.log('ℹ️ Usuario canceló el login');
                 return null;
             }
             
-            if (mensaje.includes('10:')) {
-                mensaje = 'Error de configuración OAuth. Verifica el SHA-1 en Google Cloud Console.';
-            } else if (mensaje.toLowerCase().includes('network')) {
-                mensaje = 'Sin conexión a Internet';
+            // Error 10 = Configuración incorrecta
+            if (codigo === '10' || codigo === 10 || mensaje.includes('10:')) {
+                mensaje = 'Error de configuración OAuth.\n\nVerifica que:\n- El SHA-1 esté registrado en Google Cloud\n- El package name sea correcto\n- Los Client IDs sean correctos';
+            } 
+            // Error de red
+            else if (mensaje.toLowerCase().includes('network') || mensaje.toLowerCase().includes('timeout')) {
+                mensaje = 'Error de conexión.\n\nVerifica tu conexión a Internet.';
+            }
+            // Error de Google Play Services
+            else if (mensaje.toLowerCase().includes('google play')) {
+                mensaje = 'Google Play Services no disponible.\n\nActualiza Google Play Services en tu dispositivo.';
             }
             
-            alert(`Error al iniciar sesión:\n\n${mensaje}`);
+            // Mostrar alert con detalles completos para debug
+            alert(`❌ Error al iniciar sesión\n\nCódigo: ${codigo || 'N/A'}\nMensaje: ${mensaje}\n\nInfo técnica:\n${errorInfo.substring(0, 200)}`);
             return null;
         }
     }
