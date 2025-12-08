@@ -38,3 +38,4 @@ config.js
 # Capacitor
 capacitor.config.json
 /.vs
+android/app/google-services.json
