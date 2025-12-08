@@ -10,15 +10,39 @@ class OAuthIntegration {
         this.isNativeApp = this.detectarPlataforma();
         this.googleAuth = null;
         this.nativeUser = null;
+        this.capacitorReady = false;
         
-        this.inicializarAutenticacionNativa();
-        this.configurarEventosOAuth();
-        this.actualizarUI();
+        // Esperar a que Capacitor esté listo antes de inicializar
+        if (this.isNativeApp) {
+            this.esperarCapacitorListo();
+        } else {
+            this.configurarEventosOAuth();
+            this.actualizarUI();
+        }
     }
     
     // Detectar si estamos en una app nativa (Capacitor)
     detectarPlataforma() {
         return window.Capacitor !== undefined && window.Capacitor.isNativePlatform();
+    }
+    
+    // Esperar a que Capacitor esté completamente listo
+    async esperarCapacitorListo() {
+        try {
+            console.log('⏳ Esperando a que Capacitor esté listo...');
+            
+            // Esperar al evento deviceready de Capacitor
+            if (window.Capacitor) {
+                // Capacitor está disponible, continuar
+                await this.inicializarAutenticacionNativa();
+                this.configurarEventosOAuth();
+                this.actualizarUI();
+            } else {
+                console.error('❌ Capacitor no está disponible');
+            }
+        } catch (error) {
+            console.error('❌ Error esperando Capacitor:', error);
+        }
     }
     
     // Inicializar Google Auth nativo
@@ -31,6 +55,9 @@ class OAuthIntegration {
         try {
             console.log('🔧 Buscando plugin GoogleAuth en Capacitor...');
             
+            // Esperar un momento para que los plugins se registren
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // En Android, el plugin está disponible de varias formas
             // Intentar obtenerlo del registro de Capacitor
             if (window.CapacitorGoogleAuth) {
@@ -42,10 +69,11 @@ class OAuthIntegration {
             } else {
                 console.error('❌ Plugin GoogleAuth no encontrado');
                 console.log('Capacitor disponible:', !!window.Capacitor);
-                console.log('Capacitor.Plugins:', window.Capacitor?.Plugins);
+                console.log('Capacitor.Plugins disponibles:', window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : 'No hay plugins');
                 return;
             }
             
+            this.capacitorReady = true;
             console.log('✅ Google Auth nativo listo');
             
             // Verificar si hay una sesión activa
@@ -90,6 +118,10 @@ class OAuthIntegration {
                 throw new Error('No estás en una app nativa');
             }
             
+            if (!this.capacitorReady) {
+                throw new Error('Capacitor aún no está listo. Por favor, espera un momento e intenta de nuevo.');
+            }
+            
             if (!this.googleAuth) {
                 throw new Error('Plugin de Google Auth no está disponible. Verifica que esté instalado correctamente.');
             }
@@ -97,7 +129,13 @@ class OAuthIntegration {
             console.log('🔐 Iniciando login nativo...');
             console.log('📋 Llamando a googleAuth.signIn()...');
             
-            const user = await this.googleAuth.signIn();
+            // Timeout para evitar esperas infinitas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout: La autenticación tardó demasiado')), 30000);
+            });
+            
+            const signInPromise = this.googleAuth.signIn();
+            const user = await Promise.race([signInPromise, timeoutPromise]);
             
             console.log('📦 Respuesta de signIn():', user);
             
@@ -131,7 +169,23 @@ class OAuthIntegration {
             console.error('Stack:', error.stack);
             
             // Mostrar mensaje al usuario en lugar de crashear
-            const mensajeError = error.message || 'Error desconocido';
+            let mensajeError = 'Error desconocido';
+            
+            if (error.message) {
+                mensajeError = error.message;
+            } else if (typeof error === 'string') {
+                mensajeError = error;
+            }
+            
+            // Mensajes de error más amigables
+            if (mensajeError.includes('Timeout')) {
+                mensajeError = 'La autenticación tardó demasiado. Por favor, intenta de nuevo.';
+            } else if (mensajeError.includes('network') || mensajeError.includes('Network')) {
+                mensajeError = 'Error de conexión. Verifica tu conexión a Internet.';
+            } else if (mensajeError.includes('cancelled') || mensajeError.includes('canceled')) {
+                mensajeError = 'Autenticación cancelada.';
+            }
+            
             alert(`No se pudo iniciar sesión con Google:\n\n${mensajeError}\n\nPor favor, verifica:\n1. Que tengas conexión a Internet\n2. Que Google Play Services esté actualizado\n3. Que el certificado SHA-1 esté configurado en Google Cloud Console`);
             
             throw error;
@@ -740,45 +794,73 @@ class OAuthIntegration {
     // ========== ACTUALIZACIÓN DE UI ==========
     
     actualizarUI() {
-        const estado = this.obtenerEstado();
-        
-        // Emitir evento personalizado para que index.html actualice la UI
-        window.dispatchEvent(new CustomEvent('oauthStateChanged', { detail: estado }));
-        
-        // También llamar directamente a la función si existe
-        if (typeof window.updateUserUI === 'function') {
-            window.updateUserUI();
+        try {
+            const estado = this.obtenerEstado();
+            
+            // Emitir evento personalizado para que index.html actualice la UI
+            window.dispatchEvent(new CustomEvent('oauthStateChanged', { detail: estado }));
+            
+            // También llamar directamente a la función si existe
+            if (typeof window.updateUserUI === 'function') {
+                window.updateUserUI();
+            }
+        } catch (error) {
+            console.error('❌ Error al actualizar UI:', error);
+            // No lanzar el error para evitar crashes
         }
     }
     
     obtenerEstado() {
-        if (this.isNativeApp && this.nativeUser) {
-            // Estado para app nativa
+        try {
+            if (this.isNativeApp && this.nativeUser) {
+                // Estado para app nativa
+                return {
+                    autenticado: true,
+                    usuario: {
+                        nombre: this.nativeUser.givenName || this.nativeUser.displayName,
+                        email: this.nativeUser.email,
+                        foto: this.nativeUser.imageUrl
+                    },
+                    eventosCalendar: 0,
+                    archivosGDrive: 0,
+                    ultimaSincronizacion: null,
+                    plataforma: 'nativa'
+                };
+            }
+            
+            // Estado para web
+            if (!this.oauth) {
+                return {
+                    autenticado: false,
+                    usuario: null,
+                    eventosCalendar: 0,
+                    archivosGDrive: 0,
+                    ultimaSincronizacion: null,
+                    plataforma: 'web'
+                };
+            }
+            
+            const datosCache = this.oauth.obtenerDatosEnCache();
+            
             return {
-                autenticado: true,
-                usuario: {
-                    nombre: this.nativeUser.givenName || this.nativeUser.displayName,
-                    email: this.nativeUser.email,
-                    foto: this.nativeUser.imageUrl
-                },
+                autenticado: this.oauth.estaAutenticado(),
+                usuario: datosCache.usuario,
+                eventosCalendar: datosCache.calendar.count,
+                archivosGDrive: datosCache.drive.count,
+                ultimaSincronizacion: this.obtenerUltimaSincronizacion(),
+                plataforma: 'web'
+            };
+        } catch (error) {
+            console.error('❌ Error al obtener estado:', error);
+            return {
+                autenticado: false,
+                usuario: null,
                 eventosCalendar: 0,
                 archivosGDrive: 0,
                 ultimaSincronizacion: null,
-                plataforma: 'nativa'
+                plataforma: this.isNativeApp ? 'nativa' : 'web'
             };
         }
-        
-        // Estado para web
-        const datosCache = this.oauth.obtenerDatosEnCache();
-        
-        return {
-            autenticado: this.oauth.estaAutenticado(),
-            usuario: datosCache.usuario,
-            eventosCalendar: datosCache.calendar.count,
-            archivosGDrive: datosCache.drive.count,
-            ultimaSincronizacion: this.obtenerUltimaSincronizacion(),
-            plataforma: 'web'
-        };
     }
     
     obtenerUltimaSincronizacion() {
