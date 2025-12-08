@@ -30,7 +30,7 @@
                     color: white;
                     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
                     transition: all 0.3s ease;
-                " onclick="if(typeof oauthManager !== 'undefined') { oauthManager.iniciarLoginGoogle(); } else { alert('⏳ Cargando Google API...'); }"
+                "
                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.5)'"
                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.4)'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -696,9 +696,17 @@
             // Botón de conectar con Google
             const loginBtn = document.getElementById('oauthNotAuthed');
             if (loginBtn) {
-                loginBtn.addEventListener('click', function(e) {
+                loginBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
-                    if (typeof oauthManager !== 'undefined') {
+                    
+                    // Verificar si estamos en app nativa
+                    if (window.oauthIntegration && window.oauthIntegration.isNativeApp) {
+                        try {
+                            await window.oauthIntegration.loginNativo();
+                        } catch (error) {
+                            alert('❌ Error al iniciar sesión: ' + error.message);
+                        }
+                    } else if (typeof oauthManager !== 'undefined') {
                         oauthManager.iniciarLoginGoogle();
                     } else {
                         alert('⏳ Cargando Google API...');
@@ -709,9 +717,13 @@
             // Botón de logout
             const logoutBtn = document.querySelector('[onclick*="oauthManager.logout"]');
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', function(e) {
+                logoutBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
-                    if (typeof oauthManager !== 'undefined') {
+                    
+                    // Verificar si estamos en app nativa
+                    if (window.oauthIntegration && window.oauthIntegration.isNativeApp) {
+                        await window.oauthIntegration.logoutNativo();
+                    } else if (typeof oauthManager !== 'undefined') {
                         oauthManager.logout();
                     }
                 });

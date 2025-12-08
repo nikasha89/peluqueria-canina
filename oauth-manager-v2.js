@@ -116,13 +116,39 @@ class OAuthManager {
     
     async esperarScriptsGoogle() {
         console.log('⏳ Esperando a que los scripts de Google estén disponibles...');
-        return new Promise((resolve) => {
+        
+        // Detectar si estamos en Capacitor
+        const esCapacitor = typeof window.Capacitor !== 'undefined';
+        
+        return new Promise((resolve, reject) => {
+            let intentos = 0;
+            const maxIntentos = 50; // 5 segundos máximo
+            
             const checkScripts = () => {
+                intentos++;
+                
                 if (typeof gapi !== 'undefined' && typeof google !== 'undefined' && typeof google.accounts !== 'undefined') {
                     console.log('✅ Scripts de Google disponibles');
                     resolve();
+                } else if (intentos >= maxIntentos) {
+                    console.error('❌ Scripts de Google no se cargaron después de', maxIntentos * 100, 'ms');
+                    
+                    if (esCapacitor) {
+                        console.error('🔧 SOLUCIÓN: En Android, la autenticación con Google requiere configuración adicional.');
+                        console.error('Por ahora, usa la aplicación web en el navegador para conectarte.');
+                        alert('⚠️ Autenticación de Google no disponible en la app móvil\n\n' +
+                              'Para conectarte con Google, por favor:\n' +
+                              '1. Abre la aplicación web en tu navegador\n' +
+                              '2. Conéctate con Google allí\n' +
+                              '3. Los datos se sincronizarán automáticamente');
+                    } else {
+                        alert('❌ Error: No se pudieron cargar las APIs de Google\n\n' +
+                              'Verifica tu conexión a internet y recarga la página.');
+                    }
+                    
+                    reject(new Error('Scripts de Google no disponibles'));
                 } else {
-                    console.log('⏳ Scripts aún no disponibles, reintentando...');
+                    console.log('⏳ Scripts aún no disponibles, reintentando... (' + intentos + '/' + maxIntentos + ')');
                     setTimeout(checkScripts, 100);
                 }
             };

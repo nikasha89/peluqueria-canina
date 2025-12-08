@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 $NODE_PATH = "C:\nodejs\node-v20.11.0-win-x64"
-$JAVA_HOME = "C:\jdk\jdk-17.0.10+7"
-$PROJECT_PATH = "c:\Users\nikas\Downloads\Perruquería canina"
+$JAVA_HOME = "C:\Program Files\Microsoft\jdk-17.0.17.10-hotspot"
+$PROJECT_PATH = "C:\repos\MisJuguetes\peluqueria-canina"
 
 $env:PATH = "$NODE_PATH;$JAVA_HOME\bin;$env:PATH"
 $env:JAVA_HOME = $JAVA_HOME

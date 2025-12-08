@@ -2345,13 +2345,17 @@ class PeluqueriaCanina {
     async sincronizarConDrive(silencioso = false) {
         try {
             if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
-                const estado = oauthIntegration.obtenerEstado();
-                
-                if (!estado.autenticado) {
+                // Usar estaAutenticadoGeneral() en lugar de obtenerEstado()
+                if (!oauthIntegration.estaAutenticadoGeneral()) {
                     if (!silencioso) {
                         const conectar = confirm('🔐 Necesitas conectarte con Google primero.\n\n¿Quieres conectarte ahora?');
-                        if (conectar && typeof oauthManager !== 'undefined') {
-                            await oauthManager.iniciarLoginGoogle();
+                        if (conectar) {
+                            // Usar autenticación nativa o web según la plataforma
+                            if (oauthIntegration.isNativeApp) {
+                                await oauthIntegration.loginNativo();
+                            } else if (typeof oauthManager !== 'undefined') {
+                                await oauthManager.iniciarLoginGoogle();
+                            }
                         }
                     }
                     return;
@@ -2447,8 +2451,8 @@ class PeluqueriaCanina {
         try {
             if (typeof oauthIntegration === 'undefined' || !oauthIntegration) return;
             
-            const estado = oauthIntegration.obtenerEstado();
-            if (!estado.autenticado) return;
+            // Usar estaAutenticadoGeneral() para verificar autenticación
+            if (!oauthIntegration.estaAutenticadoGeneral()) return;
             
             // Sincronizar con Calendar según la operación
             if (operacion === 'crear' && cita) {
@@ -2482,7 +2486,9 @@ class PeluqueriaCanina {
             }
             
             // Siempre hacer backup en Drive
+            console.log('💾 Iniciando backup automático en Drive...');
             await this.sincronizarConDrive(true);
+            console.log('✅ Backup en Drive completado');
             
         } catch (error) {
             console.error('Error en sincronización automática:', error);

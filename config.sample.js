@@ -10,7 +10,8 @@
 const CONFIG = {
     google: {
         // Obtén estas credenciales en: https://console.cloud.google.com
-        clientId: 'TU_CLIENT_ID_AQUI.apps.googleusercontent.com',
+        clientId: 'TU_CLIENT_ID_WEB_AQUI.apps.googleusercontent.com',
+        clientIdAndroid: 'TU_CLIENT_ID_ANDROID_AQUI.apps.googleusercontent.com',
         apiKey: 'TU_API_KEY_AQUI',
         
         // Scopes (permisos) que necesita la aplicación

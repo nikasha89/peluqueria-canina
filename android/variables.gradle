@@ -13,4 +13,6 @@ ext {
     androidxJunitVersion = '1.1.5'
     androidxEspressoCoreVersion = '3.5.1'
     cordovaAndroidVersion = '10.1.1'
+    googleAuthApplicationId = 'com.peluqueriacanina.app'
+    googleAuthServerClientId = '336593129164-givp069psmaqa62a59q554vp9crllmhs.apps.googleusercontent.com'
 }

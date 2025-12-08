@@ -1,14 +1,165 @@
 /**
  * OAuth Integration - Integración de OAuth con la aplicación Peluquería Canina
  * Conecta el sistema OAuth (sin backend) con las funcionalidades de la app
+ * Soporta autenticación nativa en Android via Capacitor
  */
 
 class OAuthIntegration {
     constructor(oauthManager) {
         this.oauth = oauthManager;
+        this.isNativeApp = this.detectarPlataforma();
+        this.googleAuth = null;
+        this.nativeUser = null;
         
+        this.inicializarAutenticacionNativa();
         this.configurarEventosOAuth();
         this.actualizarUI();
+    }
+    
+    // Detectar si estamos en una app nativa (Capacitor)
+    detectarPlataforma() {
+        return window.Capacitor !== undefined && window.Capacitor.isNativePlatform();
+    }
+    
+    // Inicializar Google Auth nativo
+    async inicializarAutenticacionNativa() {
+        if (!this.isNativeApp) {
+            console.log('📱 Ejecutando en navegador web');
+            return;
+        }
+        
+        try {
+            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+            this.googleAuth = GoogleAuth;
+            
+            // Inicializar el plugin
+            await this.googleAuth.initialize({
+                clientId: window.APP_CONFIG.google.clientIdAndroid,
+                scopes: window.APP_CONFIG.google.scopes.split(' '),
+                grantOfflineAccess: true
+            });
+            
+            console.log('✅ Google Auth nativo inicializado');
+            
+            // Verificar si hay una sesión activa
+            await this.verificarSesionNativa();
+            
+        } catch (error) {
+            console.error('❌ Error al inicializar Google Auth nativo:', error);
+        }
+    }
+    
+    // Verificar si hay una sesión nativa activa
+    async verificarSesionNativa() {
+        if (!this.isNativeApp || !this.googleAuth) return;
+        
+        try {
+            const user = await this.googleAuth.refresh();
+            if (user && user.authentication) {
+                this.nativeUser = user;
+                console.log('✅ Sesión nativa restaurada:', user.email);
+                
+                // Emitir evento de login
+                window.dispatchEvent(new CustomEvent('oauthLoginCompleto', {
+                    detail: {
+                        usuario: {
+                            nombre: user.givenName || user.displayName,
+                            email: user.email,
+                            foto: user.imageUrl
+                        }
+                    }
+                }));
+            }
+        } catch (error) {
+            console.log('ℹ️ No hay sesión nativa activa');
+        }
+    }
+    
+    // Login con autenticación nativa
+    async loginNativo() {
+        if (!this.isNativeApp || !this.googleAuth) {
+            console.error('❌ Autenticación nativa no disponible');
+            return null;
+        }
+        
+        try {
+            console.log('🔐 Iniciando login nativo...');
+            
+            const user = await this.googleAuth.signIn();
+            
+            if (!user || !user.authentication) {
+                throw new Error('No se pudo obtener información de usuario');
+            }
+            
+            this.nativeUser = user;
+            
+            console.log('✅ Login nativo exitoso:', user.email);
+            
+            // Emitir evento de login completo
+            window.dispatchEvent(new CustomEvent('oauthLoginCompleto', {
+                detail: {
+                    usuario: {
+                        nombre: user.givenName || user.displayName,
+                        email: user.email,
+                        foto: user.imageUrl
+                    },
+                    accessToken: user.authentication.accessToken
+                }
+            }));
+            
+            return user;
+            
+        } catch (error) {
+            console.error('❌ Error en login nativo:', error);
+            throw error;
+        }
+    }
+    
+    // Logout nativo
+    async logoutNativo() {
+        if (!this.isNativeApp || !this.googleAuth) return;
+        
+        try {
+            await this.googleAuth.signOut();
+            this.nativeUser = null;
+            console.log('👋 Logout nativo exitoso');
+            
+            window.dispatchEvent(new CustomEvent('oauthLoggedOut'));
+            
+        } catch (error) {
+            console.error('❌ Error en logout nativo:', error);
+        }
+    }
+    
+    // Verificar si está autenticado (web o nativo)
+    estaAutenticadoGeneral() {
+        if (this.isNativeApp) {
+            return this.nativeUser !== null && this.nativeUser.authentication !== null;
+        }
+        return this.oauth.estaAutenticado();
+    }
+    
+    // Obtener token de acceso (web o nativo)
+    async obtenerAccessToken() {
+        if (this.isNativeApp && this.nativeUser) {
+            // Verificar si el token está expirado y refrescar si es necesario
+            try {
+                const user = await this.googleAuth.refresh();
+                this.nativeUser = user;
+                return user.authentication.accessToken;
+            } catch (error) {
+                console.error('Error al refrescar token:', error);
+                return null;
+            }
+        }
+        
+        // Para web, obtener el token del gapi (Google API Client)
+        if (typeof gapi !== 'undefined' && gapi.client && gapi.client.getToken()) {
+            return gapi.client.getToken().access_token;
+        }
+        
+        console.warn('⚠️ No se pudo obtener el token de acceso');
+        return null;
     }
     
     // Obtener app dinámicamente cuando se necesite
@@ -54,7 +205,7 @@ class OAuthIntegration {
     // ========== SINCRONIZACIÓN AUTOMÁTICA ==========
     
     async cargarBackupAutomatico() {
-        if (!this.oauth.estaAutenticado()) {
+        if (!this.estaAutenticadoGeneral()) {
             return;
         }
         
@@ -69,7 +220,7 @@ class OAuthIntegration {
             
             // Buscar el archivo de backup
             const nombreArchivo = 'peluqueria-canina-backup.json';
-            const archivos = await this.oauth.buscarArchivosDrive(nombreArchivo);
+            const archivos = await this.buscarArchivosDriveGeneral(nombreArchivo);
             
             if (!archivos || archivos.length === 0) {
                 console.log('ℹ️ No hay backup en Google Drive');
@@ -80,7 +231,7 @@ class OAuthIntegration {
             console.log('📦 Backup encontrado:', archivoBackup.name);
             
             // Descargar y restaurar el backup automáticamente
-            const contenido = await this.oauth.descargarArchivoDrive(archivoBackup.id);
+            const contenido = await this.descargarArchivoDriveGeneral(archivoBackup.id);
             const backup = JSON.parse(contenido);
             
             console.log('📥 Restaurando backup desde Google Drive...');
@@ -197,7 +348,7 @@ class OAuthIntegration {
     }
     
     async exportarCitaACalendar(cita) {
-        if (!this.oauth.estaAutenticado()) {
+        if (!this.estaAutenticadoGeneral()) {
             alert('⚠️ Debes autenticarte con Google primero');
             return null;
         }
@@ -216,7 +367,7 @@ class OAuthIntegration {
                 
                 // Verificar si el evento todavía existe en Google
                 try {
-                    const eventoExistente = await this.oauth.obtenerEventoCalendar(cita.googleEventId);
+                    const eventoExistente = await this.obtenerEventoCalendarGeneral(cita.googleEventId);
                     if (eventoExistente) {
                         console.log('✅ El evento ya existe en Google Calendar, no se duplicará');
                         return eventoExistente;
@@ -261,7 +412,7 @@ class OAuthIntegration {
                 }
             };
             
-            const resultado = await this.oauth.crearEventoCalendar(evento);
+            const resultado = await this.crearEventoCalendarGeneral(evento);
             
             // Guardar el ID del evento en la cita
             cita.googleEventId = resultado.id;
@@ -285,10 +436,162 @@ class OAuthIntegration {
         }
     }
     
+    // Métodos generales para API de Google (soportan web y nativo)
+    async crearEventoCalendarGeneral(evento) {
+        const token = await this.obtenerAccessToken();
+        if (!token) {
+            throw new Error('No hay token de acceso disponible');
+        }
+        
+        const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(evento)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Error al crear evento: ${response.statusText}`);
+        }
+        
+        return await response.json();
+    }
+    
+    async obtenerEventoCalendarGeneral(eventId) {
+        const token = await this.obtenerAccessToken();
+        if (!token) {
+            throw new Error('No hay token de acceso disponible');
+        }
+        
+        const response = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                return null;
+            }
+            throw new Error(`Error al obtener evento: ${response.statusText}`);
+        }
+        
+        return await response.json();
+    }
+    
+    async buscarArchivosDriveGeneral(nombreArchivo) {
+        const token = await this.obtenerAccessToken();
+        if (!token) {
+            throw new Error('No hay token de acceso disponible');
+        }
+        
+        const query = `name='${nombreArchivo}' and trashed=false`;
+        const response = await fetch(
+            `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime)`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`Error al buscar archivos: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        return data.files || [];
+    }
+    
+    async descargarArchivoDriveGeneral(fileId) {
+        const token = await this.obtenerAccessToken();
+        if (!token) {
+            throw new Error('No hay token de acceso disponible');
+        }
+        
+        const response = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`Error al descargar archivo: ${response.statusText}`);
+        }
+        
+        return await response.text();
+    }
+    
+    async subirArchivoDriveGeneral(nombreArchivo, contenido) {
+        const token = await this.obtenerAccessToken();
+        if (!token) {
+            throw new Error('No hay token de acceso disponible');
+        }
+        
+        const metadata = {
+            name: nombreArchivo,
+            mimeType: 'application/json'
+        };
+        
+        const formData = new FormData();
+        formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        formData.append('file', new Blob([contenido], { type: 'application/json' }));
+        
+        const response = await fetch(
+            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`Error al subir archivo: ${response.statusText}`);
+        }
+        
+        return await response.json();
+    }
+    
+    async actualizarArchivoDriveGeneral(fileId, contenido) {
+        const token = await this.obtenerAccessToken();
+        if (!token) {
+            throw new Error('No hay token de acceso disponible');
+        }
+        
+        const response = await fetch(
+            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: contenido
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`Error al actualizar archivo: ${response.statusText}`);
+        }
+        
+        return await response.json();
+    }
+    
     // ========== INTEGRACIÓN CON DRIVE ==========
     
     async hacerBackup() {
-        if (!this.oauth.estaAutenticado()) {
+        if (!this.estaAutenticadoGeneral()) {
             alert('⚠️ Debes autenticarte con Google primero');
             return null;
         }
@@ -318,17 +621,17 @@ class OAuthIntegration {
             const nombreArchivo = 'peluqueria-canina-backup.json';
             
             // Buscar si ya existe un backup anterior
-            const archivosExistentes = await this.oauth.buscarArchivosDrive(nombreArchivo);
+            const archivosExistentes = await this.buscarArchivosDriveGeneral(nombreArchivo);
             
             let resultado;
             if (archivosExistentes && archivosExistentes.length > 0) {
                 // Actualizar el archivo existente
                 console.log('📝 Actualizando backup existente...');
-                resultado = await this.oauth.actualizarArchivoDrive(archivosExistentes[0].id, contenido);
+                resultado = await this.actualizarArchivoDriveGeneral(archivosExistentes[0].id, contenido);
             } else {
                 // Crear nuevo archivo
                 console.log('📝 Creando nuevo backup...');
-                resultado = await this.oauth.subirArchivoDrive(nombreArchivo, contenido);
+                resultado = await this.subirArchivoDriveGeneral(nombreArchivo, contenido);
             }
             
             // Guardar marca de tiempo local
@@ -345,7 +648,7 @@ class OAuthIntegration {
     }
     
     async restaurarBackup(fileId, yaConfirmado = false) {
-        if (!this.oauth.estaAutenticado()) {
+        if (!this.estaAutenticadoGeneral()) {
             alert('⚠️ Debes autenticarte con Google primero');
             return false;
         }
@@ -357,7 +660,7 @@ class OAuthIntegration {
         }
         
         try {
-            const contenido = await this.oauth.descargarArchivoDrive(fileId);
+            const contenido = await this.descargarArchivoDriveGeneral(fileId);
             const backup = JSON.parse(contenido);
             
             // Confirmar restauración solo si no fue confirmado previamente
@@ -426,6 +729,23 @@ class OAuthIntegration {
     }
     
     obtenerEstado() {
+        if (this.isNativeApp && this.nativeUser) {
+            // Estado para app nativa
+            return {
+                autenticado: true,
+                usuario: {
+                    nombre: this.nativeUser.givenName || this.nativeUser.displayName,
+                    email: this.nativeUser.email,
+                    foto: this.nativeUser.imageUrl
+                },
+                eventosCalendar: 0,
+                archivosGDrive: 0,
+                ultimaSincronizacion: null,
+                plataforma: 'nativa'
+            };
+        }
+        
+        // Estado para web
         const datosCache = this.oauth.obtenerDatosEnCache();
         
         return {
@@ -433,7 +753,8 @@ class OAuthIntegration {
             usuario: datosCache.usuario,
             eventosCalendar: datosCache.calendar.count,
             archivosGDrive: datosCache.drive.count,
-            ultimaSincronizacion: this.obtenerUltimaSincronizacion()
+            ultimaSincronizacion: this.obtenerUltimaSincronizacion(),
+            plataforma: 'web'
         };
     }
     
