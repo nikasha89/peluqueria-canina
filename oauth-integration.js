@@ -29,15 +29,23 @@ class OAuthIntegration {
         }
         
         try {
-            console.log('🔧 Iniciando inicialización de Google Auth nativo...');
+            console.log('🔧 Buscando plugin GoogleAuth en Capacitor...');
             
-            // Importar el plugin de Capacitor
-            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-            this.googleAuth = GoogleAuth;
+            // En Android, el plugin está disponible de varias formas
+            // Intentar obtenerlo del registro de Capacitor
+            if (window.CapacitorGoogleAuth) {
+                this.googleAuth = window.CapacitorGoogleAuth;
+                console.log('✅ Plugin encontrado en window.CapacitorGoogleAuth');
+            } else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.GoogleAuth) {
+                this.googleAuth = window.Capacitor.Plugins.GoogleAuth;
+                console.log('✅ Plugin encontrado en window.Capacitor.Plugins.GoogleAuth');
+            } else {
+                console.error('❌ Plugin GoogleAuth no encontrado');
+                console.log('Capacitor disponible:', !!window.Capacitor);
+                console.log('Capacitor.Plugins:', window.Capacitor?.Plugins);
+                return;
+            }
             
-            console.log('✅ Plugin GoogleAuth importado correctamente');
-            
-            // El plugin se auto-inicializa con los valores de capacitor.config.json
             console.log('✅ Google Auth nativo listo');
             
             // Verificar si hay una sesión activa
