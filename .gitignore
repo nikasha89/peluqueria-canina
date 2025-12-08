@@ -37,5 +37,5 @@ setup.bat
 config.js
 
 # Capacitor
-capacitor.config.json (pero incluir configuración base si es necesaria)
+capacitor.config.json
 /.vs

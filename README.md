@@ -1,6 +1,6 @@
 # 🐕 Peluquería Canina - Sistema de Gestión
 
-Aplicación web sencilla y completa para gestionar tu peluquería canina desde cualquier dispositivo: tablet, móvil o PC.
+Aplicación web y móvil completa para gestionar tu peluquería canina desde cualquier dispositivo.
 
 ## ✨ Características
 
@@ -9,13 +9,100 @@ Aplicación web sencilla y completa para gestionar tu peluquería canina desde c
 - **📊 Estadísticas**: Visualiza el total de citas e ingresos
 - **🔍 Búsqueda**: Encuentra rápidamente clientes por nombre, teléfono o nombre del perro
 - **📱 Diseño Responsivo**: Funciona perfectamente en tablets, móviles y ordenadores
+- **☁️ Sincronización con Google**: Google Calendar y Google Drive (opcional)
+- **📲 App Nativa para Android**: Versión móvil compilada con Capacitor
 - **💾 Almacenamiento Local**: Todos los datos se guardan en tu dispositivo
 
-## 🚀 Cómo usar
+## 🚀 Configuración inicial
 
-1. **Abrir la aplicación**: Simplemente abre el archivo `index.html` en tu navegador web
-2. **No requiere instalación**: Es una aplicación web que funciona directamente desde tu navegador
-3. **Funciona sin internet**: Una vez cargada, puedes usarla sin conexión
+### 1. Configurar credenciales de Google (IMPORTANTE)
+
+Los archivos de configuración con credenciales sensibles NO están en el repositorio por seguridad.
+
+**Archivo: `capacitor.config.json`**
+```bash
+cp capacitor.config.sample.json capacitor.config.json
+```
+
+Edita `capacitor.config.json` y reemplaza:
+- `YOUR_ANDROID_CLIENT_ID` con tu Client ID de Android
+- `YOUR_WEB_CLIENT_ID` con tu Client ID Web
+
+**Archivo: `config.js`**
+```bash
+cp config.sample.js config.js
+```
+
+Edita `config.js` con tus credenciales de Google Cloud Console.
+
+### 2. Obtener credenciales de Google Cloud Console
+
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Crea un proyecto nuevo o selecciona uno existente
+3. Activa las APIs:
+   - Google Calendar API
+   - Google Drive API
+   - Google People API
+4. Crea credenciales OAuth 2.0:
+   
+   **Para Web:**
+   - Tipo: "Web application"
+   - Authorized JavaScript origins: `http://localhost:8100`
+   - Authorized redirect URIs: `http://localhost:8100`
+   
+   **Para Android:**
+   - Tipo: "Android"
+   - Package name: `com.peluqueriacanina.app`
+   - SHA-1 certificate fingerprint: 
+     ```bash
+     keytool -list -v -keystore ~/.android/debug.keystore \
+             -alias androiddebugkey -storepass android \
+             -keypass android | grep SHA1
+     ```
+
+5. Configura OAuth consent screen en modo "Testing" y agrega tu email como test user
+
+## 📱 Desarrollo
+
+### Instalar dependencias
+
+```bash
+npm install
+```
+
+### Ejecutar en navegador
+
+```bash
+npm start
+# Abre http://localhost:8100
+```
+
+### Compilar APK para Android
+
+```bash
+# Sincronizar cambios
+npx cap sync android
+
+# Compilar
+cd android
+./gradlew assembleDebug
+# En Windows: .\gradlew assembleDebug
+
+# El APK estará en: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+## 🔒 Seguridad
+
+**IMPORTANTE**: Los siguientes archivos contienen información sensible y NO deben subirse al repositorio:
+
+- ❌ `capacitor.config.json` - Contiene Client IDs
+- ❌ `config.js` - Contiene API Keys
+- ❌ `android/local.properties` - Rutas locales del SDK
+- ❌ `android/app/google-services.json` - Configuración de Firebase (si se usa)
+
+✅ Estos archivos ya están protegidos en `.gitignore`
+
+✅ Los archivos `.sample` SÍ están en el repo como plantillas
 
 ## 📋 Funcionalidades principales
 
