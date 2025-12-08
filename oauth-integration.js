@@ -85,13 +85,15 @@ class OAuthIntegration {
     
     // Login con autenticación nativa
     async loginNativo() {
-        if (!this.isNativeApp || !this.googleAuth) {
-            console.error('❌ Autenticación nativa no disponible');
-            console.log('Debug:', { isNativeApp: this.isNativeApp, hasGoogleAuth: !!this.googleAuth });
-            throw new Error('Autenticación nativa no disponible. Asegúrate de que el plugin esté instalado.');
-        }
-        
         try {
+            if (!this.isNativeApp) {
+                throw new Error('No estás en una app nativa');
+            }
+            
+            if (!this.googleAuth) {
+                throw new Error('Plugin de Google Auth no está disponible. Verifica que esté instalado correctamente.');
+            }
+            
             console.log('🔐 Iniciando login nativo...');
             console.log('📋 Llamando a googleAuth.signIn()...');
             
@@ -127,6 +129,11 @@ class OAuthIntegration {
             console.error('Tipo de error:', error.constructor.name);
             console.error('Mensaje:', error.message);
             console.error('Stack:', error.stack);
+            
+            // Mostrar mensaje al usuario en lugar de crashear
+            const mensajeError = error.message || 'Error desconocido';
+            alert(`No se pudo iniciar sesión con Google:\n\n${mensajeError}\n\nPor favor, verifica:\n1. Que tengas conexión a Internet\n2. Que Google Play Services esté actualizado\n3. Que el certificado SHA-1 esté configurado en Google Cloud Console`);
+            
             throw error;
         }
     }
