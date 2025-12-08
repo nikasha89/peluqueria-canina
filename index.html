@@ -699,16 +699,27 @@
                 loginBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     
+                    console.log('🔘 Botón de login presionado');
+                    
                     // Verificar si estamos en app nativa
                     if (window.oauthIntegration && window.oauthIntegration.isNativeApp) {
+                        console.log('📱 Modo nativo detectado, llamando a loginNativo()');
                         try {
-                            await window.oauthIntegration.loginNativo();
+                            const resultado = await window.oauthIntegration.loginNativo();
+                            if (resultado) {
+                                console.log('✅ Login completado exitosamente');
+                            } else {
+                                console.log('⚠️ Login no completado (cancelado o error)');
+                            }
                         } catch (error) {
-                            alert('❌ Error al iniciar sesión: ' + error.message);
+                            console.error('❌ Error capturado en event listener:', error);
+                            // No mostrar alert aquí, loginNativo() ya lo hace
                         }
                     } else if (typeof oauthManager !== 'undefined') {
+                        console.log('🌐 Modo web detectado, usando oauthManager');
                         oauthManager.iniciarLoginGoogle();
                     } else {
+                        console.log('⏳ OAuth no disponible aún');
                         alert('⏳ Cargando Google API...');
                     }
                 });

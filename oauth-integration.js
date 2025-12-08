@@ -53,35 +53,54 @@ class OAuthIntegration {
         }
         
         try {
-            console.log('🔧 Buscando plugin GoogleAuth en Capacitor...');
+            console.log('🔧 Iniciando búsqueda del plugin GoogleAuth...');
             
-            // Esperar un momento para que los plugins se registren
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Esperar más tiempo para que Capacitor esté completamente listo
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // En Android, el plugin está disponible de varias formas
-            // Intentar obtenerlo del registro de Capacitor
-            if (window.CapacitorGoogleAuth) {
-                this.googleAuth = window.CapacitorGoogleAuth;
+            // Intentar obtener el plugin de forma segura
+            let plugin = null;
+            
+            // Opción 1: window.CapacitorGoogleAuth (forma directa)
+            if (typeof window.CapacitorGoogleAuth !== 'undefined') {
+                plugin = window.CapacitorGoogleAuth;
                 console.log('✅ Plugin encontrado en window.CapacitorGoogleAuth');
-            } else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.GoogleAuth) {
-                this.googleAuth = window.Capacitor.Plugins.GoogleAuth;
-                console.log('✅ Plugin encontrado en window.Capacitor.Plugins.GoogleAuth');
-            } else {
-                console.error('❌ Plugin GoogleAuth no encontrado');
-                console.log('Capacitor disponible:', !!window.Capacitor);
-                console.log('Capacitor.Plugins disponibles:', window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : 'No hay plugins');
+            }
+            // Opción 2: Capacitor.Plugins.GoogleAuth (forma estándar)
+            else if (window.Capacitor && window.Capacitor.Plugins) {
+                const plugins = window.Capacitor.Plugins;
+                console.log('📦 Plugins disponibles:', Object.keys(plugins));
+                
+                if (plugins.GoogleAuth) {
+                    plugin = plugins.GoogleAuth;
+                    console.log('✅ Plugin encontrado en Capacitor.Plugins.GoogleAuth');
+                }
+            }
+            
+            if (!plugin) {
+                console.error('❌ Plugin GoogleAuth NO encontrado');
+                console.log('Debug info:', {
+                    hasCapacitor: !!window.Capacitor,
+                    hasCapacitorGoogleAuth: !!window.CapacitorGoogleAuth,
+                    pluginsAvailable: window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : []
+                });
                 return;
             }
             
+            this.googleAuth = plugin;
             this.capacitorReady = true;
-            console.log('✅ Google Auth nativo listo');
+            console.log('✅ Google Auth nativo inicializado correctamente');
             
-            // Verificar si hay una sesión activa
-            await this.verificarSesionNativa();
+            // Verificar si hay una sesión activa (sin await para evitar bloqueos)
+            this.verificarSesionNativa().catch(err => {
+                console.log('ℹ️ No hay sesión previa:', err.message);
+            });
             
         } catch (error) {
-            console.error('❌ Error al inicializar Google Auth nativo:', error);
+            console.error('❌ Error crítico al inicializar Google Auth:', error);
+            console.error('Mensaje:', error.message);
             console.error('Stack:', error.stack);
+            // No lanzar el error para evitar crashes
         }
     }
     
@@ -113,82 +132,120 @@ class OAuthIntegration {
     
     // Login con autenticación nativa
     async loginNativo() {
+        console.log('🚀 loginNativo() llamado');
+        
         try {
+            // Validación 1: Verificar plataforma
             if (!this.isNativeApp) {
-                throw new Error('No estás en una app nativa');
+                const error = new Error('No estás en una app nativa');
+                console.error('❌', error.message);
+                alert(error.message);
+                throw error;
             }
+            console.log('✓ Plataforma nativa confirmada');
             
+            // Validación 2: Verificar que Capacitor esté listo
             if (!this.capacitorReady) {
-                throw new Error('Capacitor aún no está listo. Por favor, espera un momento e intenta de nuevo.');
+                const error = new Error('El sistema aún está cargando. Por favor, espera unos segundos e intenta de nuevo.');
+                console.error('❌', error.message);
+                alert(error.message);
+                throw error;
             }
+            console.log('✓ Capacitor listo');
             
+            // Validación 3: Verificar que el plugin exista
             if (!this.googleAuth) {
-                throw new Error('Plugin de Google Auth no está disponible. Verifica que esté instalado correctamente.');
+                const error = new Error('Plugin de Google Auth no disponible. Reinstala la aplicación.');
+                console.error('❌', error.message);
+                alert(error.message);
+                throw error;
+            }
+            console.log('✓ Plugin GoogleAuth disponible');
+            
+            // Validación 4: Verificar que signIn sea una función
+            if (typeof this.googleAuth.signIn !== 'function') {
+                const error = new Error('El plugin GoogleAuth no tiene el método signIn. Reinstala la aplicación.');
+                console.error('❌', error.message);
+                console.log('GoogleAuth object:', this.googleAuth);
+                alert(error.message);
+                throw error;
+            }
+            console.log('✓ Método signIn disponible');
+            
+            console.log('🔐 Iniciando autenticación con Google...');
+            
+            // Llamar al plugin SIN timeout (el plugin ya tiene su propio timeout)
+            let user;
+            try {
+                user = await this.googleAuth.signIn();
+            } catch (signInError) {
+                console.error('❌ Error en signIn():', signInError);
+                throw signInError;
             }
             
-            console.log('🔐 Iniciando login nativo...');
-            console.log('📋 Llamando a googleAuth.signIn()...');
+            console.log('📦 Respuesta recibida:', user);
             
-            // Timeout para evitar esperas infinitas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout: La autenticación tardó demasiado')), 30000);
-            });
-            
-            const signInPromise = this.googleAuth.signIn();
-            const user = await Promise.race([signInPromise, timeoutPromise]);
-            
-            console.log('📦 Respuesta de signIn():', user);
-            
-            if (!user || !user.authentication) {
-                console.error('❌ Usuario o authentication no válido:', user);
-                throw new Error('No se pudo obtener información de usuario');
+            // Validar respuesta
+            if (!user) {
+                throw new Error('No se recibió respuesta del servidor de Google');
             }
             
+            if (!user.authentication) {
+                throw new Error('La respuesta no incluye datos de autenticación');
+            }
+            
+            // Guardar usuario
             this.nativeUser = user;
+            console.log('✅ Login exitoso:', user.email || 'sin email');
             
-            console.log('✅ Login nativo exitoso:', user.email);
-            
-            // Emitir evento de login completo
-            window.dispatchEvent(new CustomEvent('oauthLoginCompleto', {
-                detail: {
-                    usuario: {
-                        nombre: user.givenName || user.displayName,
-                        email: user.email,
-                        foto: user.imageUrl
-                    },
-                    accessToken: user.authentication.accessToken
-                }
-            }));
+            // Emitir evento
+            try {
+                window.dispatchEvent(new CustomEvent('oauthLoginCompleto', {
+                    detail: {
+                        usuario: {
+                            nombre: user.givenName || user.displayName || 'Usuario',
+                            email: user.email || '',
+                            foto: user.imageUrl || ''
+                        },
+                        accessToken: user.authentication.accessToken || ''
+                    }
+                }));
+                console.log('✅ Evento oauthLoginCompleto emitido');
+            } catch (eventError) {
+                console.error('⚠️ Error al emitir evento (no crítico):', eventError);
+            }
             
             return user;
             
         } catch (error) {
-            console.error('❌ Error en login nativo:', error);
-            console.error('Tipo de error:', error.constructor.name);
-            console.error('Mensaje:', error.message);
-            console.error('Stack:', error.stack);
+            console.error('❌ ERROR CAPTURADO en loginNativo:');
+            console.error('  Tipo:', error.constructor?.name || typeof error);
+            console.error('  Mensaje:', error.message || error);
+            console.error('  Stack:', error.stack);
             
-            // Mostrar mensaje al usuario en lugar de crashear
-            let mensajeError = 'Error desconocido';
+            // Determinar mensaje amigable
+            let mensajeUsuario = 'Error desconocido';
             
-            if (error.message) {
-                mensajeError = error.message;
-            } else if (typeof error === 'string') {
-                mensajeError = error;
+            if (error && error.message) {
+                mensajeUsuario = error.message;
+                
+                // Traducir mensajes comunes
+                if (mensajeUsuario.includes('12501')) {
+                    mensajeUsuario = 'Autenticación cancelada por el usuario';
+                } else if (mensajeUsuario.includes('10')) {
+                    mensajeUsuario = 'Error de configuración. Verifica el SHA-1 en Google Cloud Console';
+                } else if (mensajeUsuario.includes('network') || mensajeUsuario.toLowerCase().includes('network')) {
+                    mensajeUsuario = 'Sin conexión a Internet';
+                }
             }
             
-            // Mensajes de error más amigables
-            if (mensajeError.includes('Timeout')) {
-                mensajeError = 'La autenticación tardó demasiado. Por favor, intenta de nuevo.';
-            } else if (mensajeError.includes('network') || mensajeError.includes('Network')) {
-                mensajeError = 'Error de conexión. Verifica tu conexión a Internet.';
-            } else if (mensajeError.includes('cancelled') || mensajeError.includes('canceled')) {
-                mensajeError = 'Autenticación cancelada.';
+            // Solo mostrar alert si no es cancelación del usuario
+            if (!mensajeUsuario.includes('cancelada') && !mensajeUsuario.includes('12501')) {
+                alert(`Error de autenticación:\n\n${mensajeUsuario}\n\nRevisa la consola para más detalles.`);
             }
             
-            alert(`No se pudo iniciar sesión con Google:\n\n${mensajeError}\n\nPor favor, verifica:\n1. Que tengas conexión a Internet\n2. Que Google Play Services esté actualizado\n3. Que el certificado SHA-1 esté configurado en Google Cloud Console`);
-            
-            throw error;
+            // NO relanzar el error para evitar que crashee la app
+            return null;
         }
     }
     
