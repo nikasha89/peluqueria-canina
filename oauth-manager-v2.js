@@ -437,6 +437,54 @@ class OAuthManager {
         }
     }
     
+    async actualizarEventoCalendar(eventId, evento) {
+        if (!this.accessToken) {
+            throw new Error('No hay sesión activa');
+        }
+        
+        try {
+            const response = await gapi.client.calendar.events.update({
+                calendarId: 'primary',
+                eventId: eventId,
+                resource: evento
+            });
+            
+            console.log('✅ Evento actualizado en Calendar:', response.result);
+            
+            return response.result;
+            
+        } catch (error) {
+            console.error('Error al actualizar evento:', error);
+            throw error;
+        }
+    }
+    
+    async eliminarEventoCalendar(eventId) {
+        if (!this.accessToken) {
+            throw new Error('No hay sesión activa');
+        }
+        
+        try {
+            await gapi.client.calendar.events.delete({
+                calendarId: 'primary',
+                eventId: eventId
+            });
+            
+            console.log('✅ Evento eliminado de Calendar:', eventId);
+            
+            return true;
+            
+        } catch (error) {
+            // Si el evento no existe, no es un error
+            if (error.status === 404 || error.status === 410) {
+                console.log('ℹ️ Evento ya no existe en Calendar');
+                return true;
+            }
+            console.error('Error al eliminar evento:', error);
+            throw error;
+        }
+    }
+    
     // ========== GOOGLE DRIVE ==========
     
     async subirArchivoDrive(nombreArchivo, contenido) {

@@ -162,6 +162,40 @@ class OAuthIntegration {
         // Por ahora solo mostramos la información
     }
     
+    convertirCitaAEvento(cita) {
+        // Convertir cita a formato de evento de Google Calendar
+        const nombreCliente = cita.clienteNombre || 'Cliente';
+        const nombrePerro = cita.perroNombre || 'Perro';
+        const raza = cita.raza || 'Sin raza';
+        const servicios = cita.servicios || [cita.servicio] || ['Servicio'];
+        const servicioTexto = Array.isArray(servicios) ? servicios.join(', ') : servicios;
+        const precio = cita.precio || 0;
+        
+        const fechaHora = new Date(`${cita.fecha}T${cita.hora}`);
+        const duracion = 60; // duración por defecto: 60 min
+        const fechaFin = new Date(fechaHora.getTime() + duracion * 60000);
+        
+        return {
+            summary: `🐕 ${nombrePerro} - ${servicioTexto}`,
+            description: `Cliente: ${nombreCliente}\nTeléfono: ${cita.telefono || 'N/A'}\nPerro: ${nombrePerro} (${raza})\nServicios: ${servicioTexto}\nPrecio: ${precio}€\n\nNotas: ${cita.notas || 'Sin notas'}`,
+            start: {
+                dateTime: fechaHora.toISOString(),
+                timeZone: 'Europe/Madrid'
+            },
+            end: {
+                dateTime: fechaFin.toISOString(),
+                timeZone: 'Europe/Madrid'
+            },
+            reminders: {
+                useDefault: false,
+                overrides: [
+                    { method: 'popup', minutes: 60 },
+                    { method: 'popup', minutes: 1440 } // 1 día antes
+                ]
+            }
+        };
+    }
+    
     async exportarCitaACalendar(cita) {
         if (!this.oauth.estaAutenticado()) {
             alert('⚠️ Debes autenticarte con Google primero');
@@ -177,12 +211,12 @@ class OAuthIntegration {
         
         try {
             // Verificar si la cita ya tiene un evento en Google Calendar
-            if (cita.googleCalendarEventId) {
-                console.log('ℹ️ Esta cita ya tiene un evento en Calendar:', cita.googleCalendarEventId);
+            if (cita.googleEventId) {
+                console.log('ℹ️ Esta cita ya tiene un evento en Calendar:', cita.googleEventId);
                 
                 // Verificar si el evento todavía existe en Google
                 try {
-                    const eventoExistente = await this.oauth.obtenerEventoCalendar(cita.googleCalendarEventId);
+                    const eventoExistente = await this.oauth.obtenerEventoCalendar(cita.googleEventId);
                     if (eventoExistente) {
                         console.log('✅ El evento ya existe en Google Calendar, no se duplicará');
                         return eventoExistente;
@@ -190,7 +224,7 @@ class OAuthIntegration {
                 } catch (error) {
                     // Si el evento no existe (fue eliminado), continuar para crear uno nuevo
                     console.log('⚠️ El evento fue eliminado de Calendar, se creará uno nuevo');
-                    cita.googleCalendarEventId = null;
+                    cita.googleEventId = null;
                 }
             }
             
@@ -230,7 +264,14 @@ class OAuthIntegration {
             const resultado = await this.oauth.crearEventoCalendar(evento);
             
             // Guardar el ID del evento en la cita
-            cita.googleCalendarEventId = resultado.id;
+            cita.googleEventId = resultado.id;
+            
+            // Buscar la cita en el array y actualizar su googleEventId por si acaso
+            const citaEnApp = app.citas.find(c => c.id === cita.id);
+            if (citaEnApp) {
+                citaEnApp.googleEventId = resultado.id;
+            }
+            
             app.guardarDatos('citas', app.citas);
             
             console.log('✅ Cita exportada a Google Calendar:', resultado);

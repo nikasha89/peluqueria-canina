@@ -1429,21 +1429,54 @@ class PeluqueriaCanina {
         // Mostrar confirmación
         this.mostrarNotificacion('✅ Cita guardada correctamente');
 
-        // Sincronizar con Google Calendar si está autorizado
-        if (this.googleCalendarToken) {
-            this.agregarAGoogleCalendar(cita);
-        }
-
-        // Auto-sincronizar en segundo plano (sin bloquear UI)
+        // Auto-sincronizar en segundo plano (crear evento en Calendar + backup en Drive)
         setTimeout(() => {
-            this.sincronizarConGoogle(true).catch(err => console.log('Auto-sync Calendar:', err));
-            this.sincronizarConDrive(true).catch(err => console.log('Auto-sync Drive:', err));
+            this.sincronizarCambiosAutomaticos('crear', cita).catch(err => console.log('Auto-sync:', err));
         }, 500);
 
         // Actualizar vistas
         this.mostrarAgenda();
         this.mostrarClientes();
         this.actualizarEstadisticas();
+    }
+
+    // Actualizar citas futuras del mismo perro cuando cambian sus datos
+    actualizarCitasDelMismoPerro(citaEditada) {
+        const hoy = new Date().toISOString().split('T')[0];
+        let citasActualizadas = 0;
+        
+        // Buscar todas las citas futuras del mismo perro y cliente
+        this.citas.forEach(cita => {
+            // No actualizar la cita que ya estamos editando
+            if (cita.id === citaEditada.id) return;
+            
+            // Solo citas futuras del mismo perro y cliente
+            if (cita.fecha >= hoy && 
+                cita.telefono === citaEditada.telefono && 
+                cita.perroNombre === citaEditada.perroNombre) {
+                
+                // Actualizar datos del perro
+                cita.raza = citaEditada.raza;
+                cita.tamanoPerro = citaEditada.tamanoPerro;
+                cita.longitudPelo = citaEditada.longitudPelo;
+                
+                // Si tiene evento en Calendar, actualizarlo
+                if (cita.googleEventId) {
+                    setTimeout(() => {
+                        this.sincronizarCambiosAutomaticos('editar', cita).catch(err => 
+                            console.log('Error actualizando cita relacionada:', err)
+                        );
+                    }, 1000 + citasActualizadas * 500); // Espaciar las actualizaciones
+                }
+                
+                citasActualizadas++;
+            }
+        });
+        
+        if (citasActualizadas > 0) {
+            this.guardarDatos('citas', this.citas);
+            console.log(`✅ ${citasActualizadas} cita(s) futura(s) del mismo perro actualizadas`);
+        }
     }
 
     // Actualizar información del cliente
@@ -1453,15 +1486,27 @@ class PeluqueriaCanina {
         );
 
         if (clienteExistente) {
-            // Actualizar información
+            // Actualizar información del cliente
             clienteExistente.nombre = cita.clienteNombre;
-            if (!clienteExistente.perros.some(p => p.nombre === cita.perroNombre)) {
+            
+            // Buscar si el perro ya existe
+            const perroExistente = clienteExistente.perros.find(p => p.nombre === cita.perroNombre);
+            
+            if (perroExistente) {
+                // Actualizar datos del perro existente
+                perroExistente.raza = cita.raza;
+                perroExistente.tamano = cita.tamanoPerro;
+                perroExistente.longitudPelo = cita.longitudPelo;
+            } else {
+                // Agregar nuevo perro
                 clienteExistente.perros.push({
                     nombre: cita.perroNombre,
                     raza: cita.raza,
-                    tamano: cita.tamanoPerro
+                    tamano: cita.tamanoPerro,
+                    longitudPelo: cita.longitudPelo
                 });
             }
+            
             clienteExistente.ultimaVisita = cita.fecha;
         } else {
             // Crear nuevo cliente
@@ -1472,7 +1517,8 @@ class PeluqueriaCanina {
                 perros: [{
                     nombre: cita.perroNombre,
                     raza: cita.raza,
-                    tamano: cita.tamanoPerro
+                    tamano: cita.tamanoPerro,
+                    longitudPelo: cita.longitudPelo
                 }],
                 ultimaVisita: cita.fecha
             });
@@ -1685,17 +1731,12 @@ class PeluqueriaCanina {
         if (confirm('¿Estás seguro de que quieres eliminar esta cita?')) {
             const cita = this.citas.find(c => c.id === id);
             
-            // Eliminar de Google Calendar si está sincronizada
-            if (cita.googleEventId && this.googleCalendarToken) {
-                this.eliminarDeGoogleCalendar(cita.googleEventId);
-            }
-            
             this.citas = this.citas.filter(c => c.id !== id);
             this.guardarDatos('citas', this.citas);
             
-            // Auto-backup en segundo plano
+            // Auto-sincronizar (eliminar de Calendar + backup Drive)
             setTimeout(() => {
-                this.sincronizarConDrive(true).catch(err => console.log('Auto-backup Drive:', err));
+                this.sincronizarCambiosAutomaticos('eliminar', cita).catch(err => console.log('Auto-sync:', err));
             }, 500);
             
             this.mostrarAgenda();
@@ -1852,9 +1893,20 @@ class PeluqueriaCanina {
             cita.clienteNombre = document.getElementById('edit_clienteNombre').value;
             cita.telefono = document.getElementById('edit_telefono').value;
             cita.perroNombre = document.getElementById('edit_perroNombre').value;
-            cita.raza = document.getElementById('edit_raza').value;
-            cita.tamanoPerro = document.getElementById('edit_tamano').value;
-            cita.longitudPelo = document.getElementById('edit_longitudPelo').value;
+            const nuevaRaza = document.getElementById('edit_raza').value;
+            const nuevoTamano = document.getElementById('edit_tamano').value;
+            const nuevaLongitud = document.getElementById('edit_longitudPelo').value;
+            
+            // Verificar si cambiaron datos del perro
+            const cambioEnPerro = (
+                cita.raza !== nuevaRaza ||
+                cita.tamanoPerro !== nuevoTamano ||
+                cita.longitudPelo !== nuevaLongitud
+            );
+            
+            cita.raza = nuevaRaza;
+            cita.tamanoPerro = nuevoTamano;
+            cita.longitudPelo = nuevaLongitud;
             cita.fecha = document.getElementById('edit_fecha').value;
             cita.hora = document.getElementById('edit_hora').value;
             cita.servicio = serviciosSeleccionados.join(', ');
@@ -1865,10 +1917,15 @@ class PeluqueriaCanina {
             this.guardarDatos('citas', this.citas);
             this.actualizarCliente(cita);
             
-            // Actualizar en Google Calendar
-            if (cita.googleEventId && this.googleCalendarToken) {
-                this.actualizarEnGoogleCalendar(cita);
+            // Si cambiaron datos del perro, actualizar todas las citas futuras del mismo perro
+            if (cambioEnPerro) {
+                this.actualizarCitasDelMismoPerro(cita);
             }
+            
+            // Auto-sincronizar cambios (actualizar Calendar + backup Drive)
+            setTimeout(() => {
+                this.sincronizarCambiosAutomaticos('editar', cita).catch(err => console.log('Auto-sync:', err));
+            }, 500);
             
             this.mostrarAgenda();
             this.mostrarClientes();
@@ -2353,17 +2410,83 @@ class PeluqueriaCanina {
     }
 
     async actualizarEnGoogleCalendar(cita) {
-        if (!this.googleCalendarToken || !cita.googleEventId) return;
+        if (!cita.googleEventId) return;
         
-        // Aquí iría la llamada real a la API para actualizar el evento
-        console.log('Actualizando evento en Google Calendar:', cita.googleEventId);
+        try {
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+                const estado = oauthIntegration.obtenerEstado();
+                if (!estado.autenticado) return;
+                
+                const evento = oauthIntegration.convertirCitaAEvento(cita);
+                await oauthIntegration.oauth.actualizarEventoCalendar(cita.googleEventId, evento);
+                console.log('✅ Evento actualizado en Calendar:', cita.googleEventId);
+            }
+        } catch (error) {
+            console.error('❌ Error al actualizar evento en Calendar:', error);
+        }
     }
 
     async eliminarDeGoogleCalendar(eventId) {
-        if (!this.googleCalendarToken) return;
+        if (!eventId) return;
         
-        // Aquí iría la llamada real a la API para eliminar el evento
-        console.log('Eliminando evento de Google Calendar:', eventId);
+        try {
+            if (typeof oauthIntegration !== 'undefined' && oauthIntegration) {
+                const estado = oauthIntegration.obtenerEstado();
+                if (!estado.autenticado) return;
+                
+                await oauthIntegration.oauth.eliminarEventoCalendar(eventId);
+                console.log('✅ Evento eliminado de Calendar:', eventId);
+            }
+        } catch (error) {
+            console.error('❌ Error al eliminar evento de Calendar:', error);
+        }
+    }
+
+    // Sincronización automática completa (crear/actualizar/eliminar)
+    async sincronizarCambiosAutomaticos(operacion, cita = null) {
+        try {
+            if (typeof oauthIntegration === 'undefined' || !oauthIntegration) return;
+            
+            const estado = oauthIntegration.obtenerEstado();
+            if (!estado.autenticado) return;
+            
+            // Sincronizar con Calendar según la operación
+            if (operacion === 'crear' && cita) {
+                // Crear nuevo evento si no tiene googleEventId
+                if (!cita.googleEventId) {
+                    const resultado = await oauthIntegration.exportarCitaACalendar(cita);
+                    if (resultado) {
+                        console.log('✅ Auto-sync: Cita creada en Calendar');
+                    }
+                }
+            } else if (operacion === 'editar' && cita) {
+                // Actualizar evento existente
+                console.log('🔍 Editando cita, googleEventId:', cita.googleEventId);
+                if (cita.googleEventId) {
+                    await this.actualizarEnGoogleCalendar(cita);
+                    console.log('✅ Auto-sync: Cita actualizada en Calendar');
+                } else {
+                    // Si no tiene eventId, crear uno nuevo
+                    console.log('⚠️ Cita editada sin googleEventId, creando nuevo evento');
+                    const resultado = await oauthIntegration.exportarCitaACalendar(cita);
+                    if (resultado) {
+                        console.log('✅ Auto-sync: Cita creada en Calendar (faltaba eventId)');
+                    }
+                }
+            } else if (operacion === 'eliminar' && cita) {
+                // Eliminar evento de Calendar
+                if (cita.googleEventId) {
+                    await this.eliminarDeGoogleCalendar(cita.googleEventId);
+                    console.log('✅ Auto-sync: Cita eliminada de Calendar');
+                }
+            }
+            
+            // Siempre hacer backup en Drive
+            await this.sincronizarConDrive(true);
+            
+        } catch (error) {
+            console.error('Error en sincronización automática:', error);
+        }
     }
 
     // Actualizar estadísticas
