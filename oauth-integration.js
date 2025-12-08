@@ -35,7 +35,7 @@ class OAuthIntegration {
             // Inicializar el plugin
             await this.googleAuth.initialize({
                 clientId: window.APP_CONFIG.google.clientIdAndroid,
-                scopes: window.APP_CONFIG.google.scopes.split(' '),
+                scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/drive.file'],
                 grantOfflineAccess: true
             });
             

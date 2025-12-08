@@ -28,7 +28,7 @@
         "https://www.googleapis.com/auth/calendar.events",
         "https://www.googleapis.com/auth/drive.file"
       ],
-      "serverClientId": "336593129164-givp069psmaqa62a59q554vp9crllmhs.apps.googleusercontent.com",
+      "serverClientId": "336593129164-0d4kmnkavd8f7bik53sttg0cst1e9jtl.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }
   }
