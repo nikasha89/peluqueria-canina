@@ -77,8 +77,9 @@ class OAuthIntegration {
             
             // IMPORTANTE: Inicializar el plugin SIN clientId
             // El plugin tomará automáticamente androidClientId de capacitor.config.json
+            // Usar SOLO scopes básicos para evitar Error 10 por scopes no verificados
             await GoogleAuthPlugin.initialize({
-                scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/drive.file'],
+                scopes: ['profile', 'email'],
                 grantOfflineAccess: true
             });
             

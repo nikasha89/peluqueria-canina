@@ -1054,9 +1054,23 @@ class PeluqueriaCanina {
     }
 
     async sincronizarAlInicio() {
+        // Detectar si estamos en Capacitor (app nativa)
+        const esCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+        
+        if (esCapacitor) {
+            console.log('App nativa detectada - Drive sync no disponible en APK');
+            return;
+        }
+        
         // Solo sincronizar si Drive está configurado
         if (!this.driveConfig.clientId || !this.driveConfig.apiKey) {
             console.log('Drive no configurado, omitiendo sincronización automática');
+            return;
+        }
+        
+        // Verificar que gapi esté disponible
+        if (typeof gapi === 'undefined' || typeof google === 'undefined') {
+            console.log('Google API no disponible, omitiendo sincronización');
             return;
         }
 
