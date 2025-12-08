@@ -31,37 +31,21 @@ class OAuthIntegration {
         try {
             console.log('🔧 Iniciando inicialización de Google Auth nativo...');
             
-            // En Capacitor, los plugins están disponibles en window.Capacitor.Plugins
-            if (!window.Capacitor || !window.Capacitor.Plugins) {
-                console.error('❌ Capacitor no está disponible');
-                return;
-            }
+            // Importar el plugin de Capacitor
+            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+            this.googleAuth = GoogleAuth;
             
-            // Esperar a que el plugin esté disponible
-            let attempts = 0;
-            while (!window.Capacitor.Plugins.GoogleAuth && attempts < 50) {
-                console.log(`⏳ Esperando plugin GoogleAuth... intento ${attempts + 1}/50`);
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
-            }
+            console.log('✅ Plugin GoogleAuth importado correctamente');
             
-            if (!window.Capacitor.Plugins.GoogleAuth) {
-                console.error('❌ Plugin GoogleAuth no está disponible después de 5 segundos');
-                return;
-            }
-            
-            this.googleAuth = window.Capacitor.Plugins.GoogleAuth;
-            console.log('✅ Plugin GoogleAuth encontrado');
-            
-            // El plugin @codetrix-studio/capacitor-google-auth se auto-inicializa
-            // con los valores de capacitor.config.json, no necesita initialize()
-            console.log('✅ Google Auth nativo listo (auto-inicializado desde capacitor.config.json)');
+            // El plugin se auto-inicializa con los valores de capacitor.config.json
+            console.log('✅ Google Auth nativo listo');
             
             // Verificar si hay una sesión activa
             await this.verificarSesionNativa();
             
         } catch (error) {
             console.error('❌ Error al inicializar Google Auth nativo:', error);
+            console.error('Stack:', error.stack);
         }
     }
     
