@@ -75,10 +75,16 @@ class OAuthIntegration {
             
             console.log('✅ Plugin GoogleAuth encontrado');
             
-            // IMPORTANTE: Inicializar el plugin SIN clientId
-            // El plugin tomará automáticamente androidClientId y scopes de capacitor.config.json
-            // Los scopes incluyen Drive y Calendar para guardar backups y sincronizar citas
+            // IMPORTANTE: Pasar scopes explícitamente para asegurar que se soliciten
+            // Aunque están en capacitor.config.json, el plugin v3.4 puede necesitarlos aquí también
             await GoogleAuthPlugin.initialize({
+                scopes: [
+                    'profile',
+                    'email',
+                    'https://www.googleapis.com/auth/drive.file',
+                    'https://www.googleapis.com/auth/calendar.readonly',
+                    'https://www.googleapis.com/auth/calendar.events'
+                ],
                 grantOfflineAccess: true
             });
             
@@ -143,11 +149,24 @@ class OAuthIntegration {
             
             console.log('🔐 Llamando a GoogleAuth.signIn()...');
             
-            // Llamar al método signIn del plugin
+            // Llamar al método signIn del plugin con scopes explícitos
+            // Algunos plugins requieren que los scopes se pasen también aquí
             const user = await this.googleAuth.signIn();
             
             console.log('✅ SignIn exitoso:', user);
             console.log('✅ User data:', JSON.stringify(user, null, 2));
+            
+            // DIAGNÓSTICO: Verificar qué scopes se obtuvieron
+            if (user.authentication && user.authentication.scopes) {
+                console.log('📋 Scopes obtenidos:', user.authentication.scopes);
+            } else {
+                console.warn('⚠️ No se obtuvieron scopes en authentication');
+            }
+            
+            // Verificar el token
+            if (user.authentication && user.authentication.accessToken) {
+                console.log('🔑 Access Token recibido:', user.authentication.accessToken.substring(0, 20) + '...');
+            }
             
             // Validar respuesta
             if (!user) {
