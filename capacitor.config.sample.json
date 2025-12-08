@@ -24,9 +24,9 @@
       "scopes": [
         "profile",
         "email",
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/calendar.events",
-        "https://www.googleapis.com/auth/drive.file"
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events"
       ],
       "androidClientId": "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
       "serverClientId": "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",

@@ -39,3 +39,4 @@ config.js
 capacitor.config.json
 /.vs
 android/app/google-services.json
+CONFIGURACION_OAUTH_ANDROID.md
