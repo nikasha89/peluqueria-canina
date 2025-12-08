@@ -29,8 +29,25 @@ class OAuthIntegration {
         }
         
         try {
-            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-            this.googleAuth = GoogleAuth;
+            // En Capacitor, los plugins están disponibles en window.Capacitor.Plugins
+            if (!window.Capacitor || !window.Capacitor.Plugins) {
+                console.error('❌ Capacitor no está disponible');
+                return;
+            }
+            
+            // Esperar a que el plugin esté disponible
+            let attempts = 0;
+            while (!window.Capacitor.Plugins.GoogleAuth && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.Capacitor.Plugins.GoogleAuth) {
+                console.error('❌ Plugin GoogleAuth no está disponible');
+                return;
+            }
+            
+            this.googleAuth = window.Capacitor.Plugins.GoogleAuth;
             
             // Inicializar el plugin
             await this.googleAuth.initialize({

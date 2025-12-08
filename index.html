@@ -694,7 +694,7 @@
         
         function inicializarEventListeners() {
             // Botón de conectar con Google
-            const loginBtn = document.getElementById('oauthNotAuthed');
+            const loginBtn = document.getElementById('loginBtn');
             if (loginBtn) {
                 loginBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
@@ -715,7 +715,7 @@
             }
             
             // Botón de logout
-            const logoutBtn = document.querySelector('[onclick*="oauthManager.logout"]');
+            const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
