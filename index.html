@@ -687,6 +687,61 @@
         
         // Actualizar UI cada 10 segundos también (por si hay cambios externos)
         setInterval(updateUserUI, 10000);
+        
+        // ========== INICIALIZAR EVENT LISTENERS PARA APK ==========
+        // Estos event listeners son necesarios para que funcione en Android/Capacitor
+        // donde los onclick inline pueden ser bloqueados por CSP
+        
+        function inicializarEventListeners() {
+            // Botón de conectar con Google
+            const loginBtn = document.getElementById('oauthNotAuthed');
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof oauthManager !== 'undefined') {
+                        oauthManager.iniciarLoginGoogle();
+                    } else {
+                        alert('⏳ Cargando Google API...');
+                    }
+                });
+            }
+            
+            // Botón de logout
+            const logoutBtn = document.querySelector('[onclick*="oauthManager.logout"]');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof oauthManager !== 'undefined') {
+                        oauthManager.logout();
+                    }
+                });
+            }
+            
+            // Pestañas de navegación
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const onclickAttr = this.getAttribute('onclick');
+                    if (onclickAttr) {
+                        // Extraer el nombre de la pestaña del onclick
+                        const match = onclickAttr.match(/showTab\('([^']+)'/);
+                        if (match && match[1]) {
+                            showTab(match[1], this);
+                        }
+                    }
+                });
+            });
+            
+            console.log('✅ Event listeners para APK inicializados');
+        }
+        
+        // Inicializar event listeners cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarEventListeners);
+        } else {
+            inicializarEventListeners();
+        }
     </script>
 </body>
 </html>
