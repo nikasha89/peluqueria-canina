@@ -75,14 +75,16 @@ class OAuthIntegration {
             
             console.log('✅ Plugin GoogleAuth encontrado');
             
-            // IMPORTANTE: Inicializar el plugin SIN clientId
-            // El plugin tomará automáticamente androidClientId de capacitor.config.json
+            // IMPORTANTE: Para Android, NO pasar clientId en initialize()
+            // El plugin lo tomará automáticamente de capacitor.config.json
+            // Solo configurar scopes y grantOfflineAccess
             await GoogleAuthPlugin.initialize({
-                scopes: ['profile', 'email', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/drive.file'],
+                scopes: ['profile', 'email'],
                 grantOfflineAccess: true
             });
             
             console.log('✅ GoogleAuth.initialize() completado');
+            console.log('ℹ️ Plugin inicializado sin clientId explícito (usa capacitor.config.json)');
             
             // Guardar referencia al plugin
             this.googleAuth = GoogleAuthPlugin;
