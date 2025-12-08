@@ -56,7 +56,7 @@ class OAuthIntegration {
             console.log('🔧 Inicializando plugin GoogleAuth...');
             
             // Esperar a que Capacitor se registre
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Verificar si el plugin está disponible en Capacitor.Plugins
             if (!window.Capacitor || !window.Capacitor.Plugins) {
@@ -75,20 +75,12 @@ class OAuthIntegration {
             
             console.log('✅ Plugin GoogleAuth encontrado');
             
-            // IMPORTANTE: Para Android, NO pasar clientId en initialize()
-            // El plugin lo tomará automáticamente de capacitor.config.json
-            // Solo configurar scopes y grantOfflineAccess
-            await GoogleAuthPlugin.initialize({
-                scopes: ['profile', 'email'],
-                grantOfflineAccess: true
-            });
-            
-            console.log('✅ GoogleAuth.initialize() completado');
-            console.log('ℹ️ Plugin inicializado sin clientId explícito (usa capacitor.config.json)');
-            
-            // Guardar referencia al plugin
+            // NO llamar a initialize() - el plugin se auto-configura desde capacitor.config.json
+            // Solo guardar la referencia
             this.googleAuth = GoogleAuthPlugin;
             this.capacitorReady = true;
+            
+            console.log('✅ Plugin listo para usar (auto-configurado desde capacitor.config.json)');
             
             // Verificar si hay sesión previa
             this.verificarSesionNativa().catch(err => {
