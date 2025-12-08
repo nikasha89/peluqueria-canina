@@ -26,7 +26,6 @@ Thumbs.db
 build.bat
 build-release.bat
 compile-apk*.bat
-build-apk*.bat
 setup.bat
 
 # Local env

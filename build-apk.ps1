@@ -1,113 +1,50 @@
-#!/usr/bin/env powershell
-
 $ErrorActionPreference = "Stop"
 
-Write-Host "========================================" -ForegroundColor Green
-Write-Host "Configuración de APK - Peluquería Canina" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
-Write-Host ""
-
-# Configurar rutas
+# Configuración de rutas
 $NODE_PATH = "C:\nodejs\node-v20.11.0-win-x64"
-$JAVA_HOME = "C:\jdk\jdk-17.0.10+7"
-$PROJECT_PATH = "c:\Users\nikas\Downloads\Perruquería canina"
+$JAVA_HOME = "C:\Program Files\Microsoft\jdk-17.0.17.10-hotspot"
+$ANDROID_HOME = "C:\Users\RodriguezAn\AppData\Local\Android\Sdk"
+$PROJECT_PATH = "C:\repos\MisJuguetes\peluqueria-canina"
 
-# Actualizar PATH
+# Configurar variables de entorno
 $env:PATH = "$NODE_PATH;$JAVA_HOME\bin;$env:PATH"
 $env:JAVA_HOME = $JAVA_HOME
+$env:ANDROID_HOME = $ANDROID_HOME
 
-# Paso 1: Verificar Node.js
-Write-Host "Paso 1: Verificando Node.js..."
-$nodeVersion = & node --version 2>&1
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✓ Node.js $nodeVersion encontrado" -ForegroundColor Green
-} else {
-    Write-Host "✗ Node.js no encontrado" -ForegroundColor Red
-    exit 1
-}
-
-# Paso 2: Verificar npm
-Write-Host ""
-Write-Host "Paso 2: Verificando npm..."
-$npmVersion = & npm --version 2>&1
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✓ npm $npmVersion encontrado" -ForegroundColor Green
-} else {
-    Write-Host "✗ npm no encontrado" -ForegroundColor Red
-    exit 1
-}
-
-# Paso 3: Instalar Java si es necesario
-Write-Host ""
-Write-Host "Paso 3: Verificando Java..."
-$javaCheck = & java -version 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Descargando e instalando OpenJDK..." -ForegroundColor Yellow
-    
-    if (-not (Test-Path "C:\Temp")) {
-        New-Item -ItemType Directory -Path "C:\Temp" -Force | Out-Null
-    }
-    
-    $ProgressPreference = 'SilentlyContinue'
-    Invoke-WebRequest -Uri 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.10%2B7/OpenJDK17U-jdk_x64_windows_hotspot_17.0.10_7.zip' -OutFile 'C:\Temp\jdk.zip'
-    
-    if (-not (Test-Path "C:\jdk")) {
-        New-Item -ItemType Directory -Path "C:\jdk" -Force | Out-Null
-    }
-    
-    Expand-Archive -Path 'C:\Temp\jdk.zip' -DestinationPath 'C:\jdk' -Force
-    Write-Host "✓ Java instalado" -ForegroundColor Green
-} else {
-    Write-Host "✓ Java encontrado" -ForegroundColor Green
-}
-
-# Actualizar JAVA_HOME después de instalar
-$env:JAVA_HOME = "C:\jdk\jdk-17.0.10+7"
-$env:PATH = "C:\jdk\jdk-17.0.10+7\bin;" + $env:PATH
-
-# Paso 4: Verificar Capacitor
-Write-Host ""
-Write-Host "Paso 4: Verificando Capacitor CLI..."
-$capVersion = & npx capacitor --version 2>&1
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✓ Capacitor $capVersion encontrado" -ForegroundColor Green
-} else {
-    Write-Host "✗ Error al verificar Capacitor" -ForegroundColor Red
-}
-
-# Paso 5: Navegar al proyecto
-Write-Host ""
-Write-Host "Paso 5: Navegando al proyecto..."
+Write-Host "Preparando archivos para APK..." -ForegroundColor Cyan
 Push-Location $PROJECT_PATH
-Write-Host "✓ En: $(Get-Location)" -ForegroundColor Green
 
-# Paso 6: Sincronizar Android
+# Copiar archivos a www/
+Write-Host "Copiando archivos a www/..." -ForegroundColor Yellow
+Copy-Item "index.html" -Destination "www/index.html" -Force
+Copy-Item "oauth-manager-v2.js" -Destination "www/oauth-manager-v2.js" -Force
+Copy-Item "oauth-integration.js" -Destination "www/oauth-integration.js" -Force
+Copy-Item "app.js" -Destination "www/app.js" -Force
+Copy-Item "styles.css" -Destination "www/styles.css" -Force
+Copy-Item "config.js" -Destination "www/config.js" -Force
+Write-Host "Archivos copiados correctamente" -ForegroundColor Green
+
+# Sincronizar con Capacitor
 Write-Host ""
-Write-Host "Paso 6: Sincronizando con Android..." -ForegroundColor Yellow
-& npx capacitor sync android
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error al sincronizar" -ForegroundColor Red
-    Pop-Location
-    exit 1
-}
+Write-Host "Sincronizando con Capacitor..." -ForegroundColor Cyan
+npx capacitor sync android
 
-# Paso 7: Compilar APK
+# Compilar APK
 Write-Host ""
-Write-Host "Paso 7: Compilando APK..." -ForegroundColor Yellow
-& npx capacitor build android
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error al compilar APK" -ForegroundColor Red
-    Pop-Location
-    exit 1
-}
-
+Write-Host "Compilando APK con Gradle..." -ForegroundColor Cyan
+Push-Location "android"
+.\gradlew assembleDebug
 Pop-Location
 
+# Copiar APK a la raiz
 Write-Host ""
-Write-Host "========================================" -ForegroundColor Green
-Write-Host "¡APK compilado exitosamente!" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
+Write-Host "Copiando APK a la raiz del proyecto..." -ForegroundColor Cyan
+$apkSource = Join-Path $PROJECT_PATH "android/app/build/outputs/apk/debug/app-debug.apk"
+$apkDest = Join-Path $PROJECT_PATH "peluqueria-canina.apk"
+Copy-Item $apkSource -Destination $apkDest -Force
+
 Write-Host ""
-Write-Host "El APK se encuentra en:" -ForegroundColor Cyan
-Write-Host "$PROJECT_PATH\android\app\build\outputs\apk\debug\app-debug.apk" -ForegroundColor Yellow
-Write-Host ""
+Write-Host "APK generado exitosamente!" -ForegroundColor Green
+Write-Host "Ubicacion: peluqueria-canina.apk" -ForegroundColor Cyan
+
+Pop-Location

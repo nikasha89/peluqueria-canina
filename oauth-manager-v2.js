@@ -50,13 +50,21 @@ class OAuthManager {
     // ========== INICIALIZACIÓN DE GOOGLE API ==========
     
     async inicializarGoogleAPI() {
-        console.log('🚀 Inicializando Google API...');
+        // Detectar si estamos en Capacitor (app nativa)
+        const esCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+        
+        if (esCapacitor) {
+            console.log('📱 Capacitor detectado - Saltando inicialización de Google Web API');
+            console.log('ℹ️ La autenticación se manejará con el plugin nativo GoogleAuth');
+            return; // NO inicializar Google Web API en apps nativas
+        }
+        
+        console.log('🚀 Inicializando Google Web API para navegador...');
         
         // Esperar a que los scripts de Google estén disponibles
         await this.esperarScriptsGoogle();
         
         // Detectar si estamos en Capacitor (móvil)
-        const esCapacitor = typeof window.Capacitor !== 'undefined';
         const redirectUri = esCapacitor 
             ? window.location.origin  // En móvil usa el origin de Capacitor
             : window.location.origin; // En web usa el origin actual
@@ -118,7 +126,12 @@ class OAuthManager {
         console.log('⏳ Esperando a que los scripts de Google estén disponibles...');
         
         // Detectar si estamos en Capacitor
-        const esCapacitor = typeof window.Capacitor !== 'undefined';
+        const esCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+        
+        if (esCapacitor) {
+            console.log('📱 Modo Capacitor - Scripts de Google no necesarios');
+            throw new Error('Scripts de Google no se cargan en modo nativo');
+        }
         
         return new Promise((resolve, reject) => {
             let intentos = 0;
@@ -133,18 +146,8 @@ class OAuthManager {
                 } else if (intentos >= maxIntentos) {
                     console.error('❌ Scripts de Google no se cargaron después de', maxIntentos * 100, 'ms');
                     
-                    if (esCapacitor) {
-                        console.error('🔧 SOLUCIÓN: En Android, la autenticación con Google requiere configuración adicional.');
-                        console.error('Por ahora, usa la aplicación web en el navegador para conectarte.');
-                        alert('⚠️ Autenticación de Google no disponible en la app móvil\n\n' +
-                              'Para conectarte con Google, por favor:\n' +
-                              '1. Abre la aplicación web en tu navegador\n' +
-                              '2. Conéctate con Google allí\n' +
-                              '3. Los datos se sincronizarán automáticamente');
-                    } else {
-                        alert('❌ Error: No se pudieron cargar las APIs de Google\n\n' +
-                              'Verifica tu conexión a internet y recarga la página.');
-                    }
+                    alert('❌ Error: No se pudieron cargar las APIs de Google\n\n' +
+                          'Verifica tu conexión a internet y recarga la página.');
                     
                     reject(new Error('Scripts de Google no disponibles'));
                 } else {
