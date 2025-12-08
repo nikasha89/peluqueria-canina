@@ -29,6 +29,8 @@ class OAuthIntegration {
         }
         
         try {
+            console.log('🔧 Iniciando inicialización de Google Auth nativo...');
+            
             // En Capacitor, los plugins están disponibles en window.Capacitor.Plugins
             if (!window.Capacitor || !window.Capacitor.Plugins) {
                 console.error('❌ Capacitor no está disponible');
@@ -38,25 +40,22 @@ class OAuthIntegration {
             // Esperar a que el plugin esté disponible
             let attempts = 0;
             while (!window.Capacitor.Plugins.GoogleAuth && attempts < 50) {
+                console.log(`⏳ Esperando plugin GoogleAuth... intento ${attempts + 1}/50`);
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
             }
             
             if (!window.Capacitor.Plugins.GoogleAuth) {
-                console.error('❌ Plugin GoogleAuth no está disponible');
+                console.error('❌ Plugin GoogleAuth no está disponible después de 5 segundos');
                 return;
             }
             
             this.googleAuth = window.Capacitor.Plugins.GoogleAuth;
+            console.log('✅ Plugin GoogleAuth encontrado');
             
-            // Inicializar el plugin
-            await this.googleAuth.initialize({
-                clientId: window.APP_CONFIG.google.clientIdAndroid,
-                scopes: window.APP_CONFIG.google.scopes.split(' '),
-                grantOfflineAccess: true
-            });
-            
-            console.log('✅ Google Auth nativo inicializado');
+            // El plugin @codetrix-studio/capacitor-google-auth se auto-inicializa
+            // con los valores de capacitor.config.json, no necesita initialize()
+            console.log('✅ Google Auth nativo listo (auto-inicializado desde capacitor.config.json)');
             
             // Verificar si hay una sesión activa
             await this.verificarSesionNativa();
@@ -96,15 +95,20 @@ class OAuthIntegration {
     async loginNativo() {
         if (!this.isNativeApp || !this.googleAuth) {
             console.error('❌ Autenticación nativa no disponible');
-            return null;
+            console.log('Debug:', { isNativeApp: this.isNativeApp, hasGoogleAuth: !!this.googleAuth });
+            throw new Error('Autenticación nativa no disponible. Asegúrate de que el plugin esté instalado.');
         }
         
         try {
             console.log('🔐 Iniciando login nativo...');
+            console.log('📋 Llamando a googleAuth.signIn()...');
             
             const user = await this.googleAuth.signIn();
             
+            console.log('📦 Respuesta de signIn():', user);
+            
             if (!user || !user.authentication) {
+                console.error('❌ Usuario o authentication no válido:', user);
                 throw new Error('No se pudo obtener información de usuario');
             }
             
@@ -128,6 +132,9 @@ class OAuthIntegration {
             
         } catch (error) {
             console.error('❌ Error en login nativo:', error);
+            console.error('Tipo de error:', error.constructor.name);
+            console.error('Mensaje:', error.message);
+            console.error('Stack:', error.stack);
             throw error;
         }
     }
