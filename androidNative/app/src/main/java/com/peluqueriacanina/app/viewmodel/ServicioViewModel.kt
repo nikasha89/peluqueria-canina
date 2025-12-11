@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
 import com.peluqueriacanina.app.PeluqueriaApp
 import com.peluqueriacanina.app.data.*
+import com.peluqueriacanina.app.sync.AutoBackupManager
 import kotlinx.coroutines.launch
 
 class ServicioViewModel(application: Application) : AndroidViewModel(application) {
@@ -18,6 +19,10 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
     val allServicios: LiveData<List<Servicio>> = servicioDao.getAllServicios()
     val allRazas: LiveData<List<Raza>> = razaDao.getAllRazas()
     
+    private fun notifyDataChanged() {
+        AutoBackupManager.notifyDataChanged(app)
+    }
+    
     fun getPreciosByServicio(servicioId: Long): LiveData<List<PrecioServicio>> {
         return precioDao.getPreciosByServicio(servicioId)
     }
@@ -25,6 +30,7 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
     fun insertServicio(servicio: Servicio, onResult: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = servicioDao.insert(servicio)
+            notifyDataChanged()
             onResult(id)
         }
     }
@@ -32,6 +38,7 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
     fun updateServicio(servicio: Servicio) {
         viewModelScope.launch {
             servicioDao.update(servicio)
+            notifyDataChanged()
         }
     }
     
@@ -39,12 +46,14 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             precioDao.deleteByServicio(servicio.id)
             servicioDao.delete(servicio)
+            notifyDataChanged()
         }
     }
     
     fun insertPrecio(precio: PrecioServicio, onResult: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = precioDao.insert(precio)
+            notifyDataChanged()
             onResult(id)
         }
     }
@@ -52,12 +61,14 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
     fun updatePrecio(precio: PrecioServicio) {
         viewModelScope.launch {
             precioDao.update(precio)
+            notifyDataChanged()
         }
     }
     
     fun deletePrecio(precio: PrecioServicio) {
         viewModelScope.launch {
             precioDao.delete(precio)
+            notifyDataChanged()
         }
     }
     
@@ -71,6 +82,7 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
             precios.forEach { precio ->
                 precioDao.insert(precio.copy(servicioId = servicioId))
             }
+            notifyDataChanged()
         }
     }
     
@@ -82,6 +94,7 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
             precios.forEach { precio ->
                 precioDao.insert(precio.copy(servicioId = servicio.id))
             }
+            notifyDataChanged()
         }
     }
     
@@ -100,6 +113,7 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
     fun insertRaza(raza: Raza, onResult: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = razaDao.insert(raza)
+            notifyDataChanged()
             onResult(id)
         }
     }
@@ -107,12 +121,14 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
     fun updateRaza(raza: Raza) {
         viewModelScope.launch {
             razaDao.update(raza)
+            notifyDataChanged()
         }
     }
     
     fun deleteRaza(raza: Raza) {
         viewModelScope.launch {
             razaDao.delete(raza)
+            notifyDataChanged()
         }
     }
 }

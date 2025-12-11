@@ -12,4 +12,7 @@
     <color name="primary">#667EEA</color>
     <color name="primary_dark">#5A67D8</color>
     <color name="secondary">#764BA2</color>
+    <color name="background">#FAFAFA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="ic_launcher_background">#667EEA</color>
 </resources>

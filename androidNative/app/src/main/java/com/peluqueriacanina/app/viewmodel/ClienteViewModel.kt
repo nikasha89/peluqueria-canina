@@ -5,8 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.switchMap
 import com.peluqueriacanina.app.PeluqueriaApp
 import com.peluqueriacanina.app.data.*
+import com.peluqueriacanina.app.sync.AutoBackupManager
 import kotlinx.coroutines.launch
 
 class ClienteViewModel(application: Application) : AndroidViewModel(application) {
@@ -14,24 +16,33 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     private val app = application as PeluqueriaApp
     private val clienteDao = app.database.clienteDao()
     private val perroDao = app.database.perroDao()
+    private val razaDao = app.database.razaDao()
     
     val allClientes: LiveData<List<Cliente>> = clienteDao.getAllClientes()
+    val allRazas: LiveData<List<Raza>> = razaDao.getAllRazas()
     
     private val _selectedCliente = MutableLiveData<Cliente?>()
     val selectedCliente: LiveData<Cliente?> = _selectedCliente
     
-    private val _perrosDelCliente = MutableLiveData<List<Perro>>()
-    val perrosDelCliente: LiveData<List<Perro>> = _perrosDelCliente
+    // Use switchMap to automatically observe perros when cliente changes
+    val perrosDelCliente: LiveData<List<Perro>> = _selectedCliente.switchMap { cliente ->
+        if (cliente != null) {
+            perroDao.getPerrosByCliente(cliente.id)
+        } else {
+            MutableLiveData(emptyList())
+        }
+    }
+    
+    private fun notifyDataChanged() {
+        AutoBackupManager.notifyDataChanged(app)
+    }
     
     fun selectCliente(cliente: Cliente?) {
         _selectedCliente.value = cliente
-        cliente?.let { loadPerrosDelCliente(it.id) }
     }
     
-    private fun loadPerrosDelCliente(clienteId: Long) {
-        perroDao.getPerrosByCliente(clienteId).observeForever { perros ->
-            _perrosDelCliente.value = perros
-        }
+    fun getPerrosForCliente(clienteId: Long): LiveData<List<Perro>> {
+        return perroDao.getPerrosByCliente(clienteId)
     }
     
     fun searchClientes(query: String): LiveData<List<Cliente>> {
@@ -41,6 +52,7 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     fun insertCliente(cliente: Cliente, onResult: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = clienteDao.insert(cliente)
+            notifyDataChanged()
             onResult(id)
         }
     }
@@ -48,6 +60,7 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     fun updateCliente(cliente: Cliente) {
         viewModelScope.launch {
             clienteDao.update(cliente)
+            notifyDataChanged()
         }
     }
     
@@ -55,13 +68,14 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             perroDao.deleteByCliente(cliente.id)
             clienteDao.delete(cliente)
+            notifyDataChanged()
         }
     }
     
     fun insertPerro(perro: Perro, onResult: (Long) -> Unit = {}) {
         viewModelScope.launch {
             val id = perroDao.insert(perro)
-            loadPerrosDelCliente(perro.clienteId)
+            notifyDataChanged()
             onResult(id)
         }
     }
@@ -69,14 +83,14 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     fun updatePerro(perro: Perro) {
         viewModelScope.launch {
             perroDao.update(perro)
-            loadPerrosDelCliente(perro.clienteId)
+            notifyDataChanged()
         }
     }
     
     fun deletePerro(perro: Perro) {
         viewModelScope.launch {
             perroDao.delete(perro)
-            loadPerrosDelCliente(perro.clienteId)
+            notifyDataChanged()
         }
     }
 }

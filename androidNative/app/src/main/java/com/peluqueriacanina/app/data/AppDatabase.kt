@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
         Cita::class,
         Raza::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +42,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
         
+        // Migration from version 2 to 3: add raza column to precios_servicio
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE precios_servicio ADD COLUMN raza TEXT")
+            }
+        }
+        
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -49,7 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "peluqueria_canina_db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance

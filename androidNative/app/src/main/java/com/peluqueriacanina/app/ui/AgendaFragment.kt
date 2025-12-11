@@ -1,10 +1,12 @@
 package com.peluqueriacanina.app.ui
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -12,7 +14,9 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.chip.Chip
 import com.peluqueriacanina.app.R
-import com.peluqueriacanina.app.ui.adapter.CitaAdapter
+import com.peluqueriacanina.app.data.Cita
+import com.peluqueriacanina.app.data.CitaConDetalles
+import com.peluqueriacanina.app.ui.adapter.CitaConDetallesAdapter
 import com.peluqueriacanina.app.viewmodel.CitaViewModel
 
 class AgendaFragment : Fragment() {
@@ -21,13 +25,15 @@ class AgendaFragment : Fragment() {
     
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter: CitaAdapter
+    private lateinit var adapter: CitaConDetallesAdapter
     private lateinit var emptyState: View
     private lateinit var txtCitasHoy: TextView
     private lateinit var txtIngresosHoy: TextView
     private lateinit var chipTodas: Chip
     private lateinit var chipHoy: Chip
     private lateinit var chipSemana: Chip
+    
+    private var currentFilter = "todas"
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -49,12 +55,14 @@ class AgendaFragment : Fragment() {
         chipHoy = view.findViewById(R.id.chipHoy)
         chipSemana = view.findViewById(R.id.chipSemana)
 
-        adapter = CitaAdapter(
-            onCitaClick = { cita ->
-                // Handle cita click - show details dialog
+        adapter = CitaConDetallesAdapter(
+            onCitaClick = { citaConDetalles ->
+                // Abrir pantalla completa de detalle
+                val detailFragment = CitaDetailFragment.newInstance(citaConDetalles.cita.id)
+                detailFragment.show(parentFragmentManager, "cita_detail")
             },
-            onCitaComplete = { cita ->
-                citaViewModel.completarCita(cita)
+            onCitaLongClick = { citaConDetalles ->
+                showQuickActions(citaConDetalles)
             }
         )
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -68,57 +76,105 @@ class AgendaFragment : Fragment() {
 
         // Setup filter chips
         chipTodas.setOnClickListener { 
+            currentFilter = "todas"
             selectChip(chipTodas)
-            loadAllCitas() 
         }
         chipHoy.setOnClickListener { 
+            currentFilter = "hoy"
             selectChip(chipHoy)
-            loadCitasHoy() 
         }
         chipSemana.setOnClickListener { 
+            currentFilter = "semana"
             selectChip(chipSemana)
-            loadCitasSemana() 
+        }
+
+        // Observe citas y cargar detalles
+        citaViewModel.allCitas.observe(viewLifecycleOwner) { citas ->
+            when (currentFilter) {
+                "todas" -> citaViewModel.loadCitasConDetalles(citas)
+                else -> {} // Se maneja en los otros observers
+            }
+        }
+        
+        citaViewModel.citasHoy.observe(viewLifecycleOwner) { citas ->
+            // Stats siempre de hoy
+            txtCitasHoy.text = citas.size.toString()
+            val ingresos = citas.sumOf { it.precioTotal }
+            txtIngresosHoy.text = "${ingresos}€"
+            
+            if (currentFilter == "hoy") {
+                citaViewModel.loadCitasConDetalles(citas)
+            }
+        }
+        
+        citaViewModel.citasSemana.observe(viewLifecycleOwner) { citas ->
+            if (currentFilter == "semana") {
+                citaViewModel.loadCitasConDetalles(citas)
+            }
+        }
+        
+        // Observe citas con detalles
+        citaViewModel.citasConDetalles.observe(viewLifecycleOwner) { citasConDetalles ->
+            adapter.submitList(citasConDetalles)
+            emptyState.visibility = if (citasConDetalles.isEmpty()) View.VISIBLE else View.GONE
+            recyclerView.visibility = if (citasConDetalles.isEmpty()) View.GONE else View.VISIBLE
         }
 
         // Load initial data - "Todas" is selected by default
         selectChip(chipTodas)
-        loadAllCitas()
-        
-        // Observe stats
-        citaViewModel.citasHoy.observe(viewLifecycleOwner) { citas ->
-            txtCitasHoy.text = citas.size.toString()
-            val ingresos = citas.sumOf { it.precioTotal }
-            txtIngresosHoy.text = "${ingresos}€"
-        }
-    }
-
-    private fun loadAllCitas() {
-        citaViewModel.allCitas.observe(viewLifecycleOwner) { citas ->
-            updateUI(citas)
-        }
-    }
-
-    private fun loadCitasHoy() {
-        citaViewModel.citasHoy.observe(viewLifecycleOwner) { citas ->
-            updateUI(citas)
-        }
-    }
-
-    private fun loadCitasSemana() {
-        citaViewModel.citasSemana.observe(viewLifecycleOwner) { citas ->
-            updateUI(citas)
-        }
-    }
-
-    private fun updateUI(citas: List<com.peluqueriacanina.app.data.Cita>) {
-        adapter.submitList(citas)
-        emptyState.visibility = if (citas.isEmpty()) View.VISIBLE else View.GONE
-        recyclerView.visibility = if (citas.isEmpty()) View.GONE else View.VISIBLE
     }
     
     private fun selectChip(selected: Chip) {
         chipTodas.isChecked = (selected == chipTodas)
         chipHoy.isChecked = (selected == chipHoy)
         chipSemana.isChecked = (selected == chipSemana)
+        
+        // Recargar según filtro
+        when (selected) {
+            chipTodas -> citaViewModel.allCitas.value?.let { citaViewModel.loadCitasConDetalles(it) }
+            chipHoy -> citaViewModel.citasHoy.value?.let { citaViewModel.loadCitasConDetalles(it) }
+            chipSemana -> citaViewModel.citasSemana.value?.let { citaViewModel.loadCitasConDetalles(it) }
+        }
+    }
+
+    private fun showQuickActions(citaConDetalles: CitaConDetalles) {
+        val cita = citaConDetalles.cita
+        val options = mutableListOf<String>()
+        
+        if (cita.estado == "pendiente") {
+            options.add("✅ Marcar como completada")
+            options.add("❌ Cancelar cita")
+        }
+        options.add("🗑️ Eliminar cita")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("${citaConDetalles.perroNombre} - ${cita.hora}")
+            .setItems(options.toTypedArray()) { _, which ->
+                when (options[which]) {
+                    "✅ Marcar como completada" -> {
+                        citaViewModel.completarCita(cita)
+                        Toast.makeText(context, "Cita completada", Toast.LENGTH_SHORT).show()
+                    }
+                    "❌ Cancelar cita" -> {
+                        citaViewModel.cancelarCita(cita)
+                        Toast.makeText(context, "Cita cancelada", Toast.LENGTH_SHORT).show()
+                    }
+                    "🗑️ Eliminar cita" -> confirmDeleteCita(cita)
+                }
+            }
+            .setNegativeButton("Cerrar", null)
+            .show()
+    }
+
+    private fun confirmDeleteCita(cita: Cita) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Eliminar cita")
+            .setMessage("¿Estás seguro de que quieres eliminar esta cita?")
+            .setPositiveButton("Eliminar") { _, _ ->
+                citaViewModel.deleteCita(cita)
+                Toast.makeText(context, "Cita eliminada", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 }

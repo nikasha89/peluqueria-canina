@@ -7,7 +7,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.peluqueriacanina.app.PeluqueriaApp
 import com.peluqueriacanina.app.data.*
+import com.peluqueriacanina.app.sync.AutoBackupManager
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import java.util.Calendar
 
 class CitaViewModel(application: Application) : AndroidViewModel(application) {
@@ -27,9 +29,46 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
     private val _citasSemana = MutableLiveData<List<Cita>>()
     val citasSemana: LiveData<List<Cita>> = _citasSemana
     
+    // Citas con detalles cargados
+    private val _citasConDetalles = MutableLiveData<List<CitaConDetalles>>()
+    val citasConDetalles: LiveData<List<CitaConDetalles>> = _citasConDetalles
+    
     init {
         loadCitasHoy()
         loadCitasSemana()
+    }
+    
+    private fun notifyDataChanged() {
+        AutoBackupManager.notifyDataChanged(app)
+    }
+    
+    fun loadCitasConDetalles(citas: List<Cita>) {
+        viewModelScope.launch {
+            val citasEnriquecidas = citas.map { cita ->
+                val cliente = clienteDao.getClienteById(cita.clienteId)
+                val perro = perroDao.getPerroById(cita.perroId)
+                
+                val serviciosNombres = mutableListOf<String>()
+                try {
+                    val serviciosIds = JSONArray(cita.serviciosIds)
+                    for (i in 0 until serviciosIds.length()) {
+                        val servicioId = serviciosIds.getLong(i)
+                        val servicio = servicioDao.getServicioById(servicioId)
+                        servicio?.let { serviciosNombres.add(it.nombre) }
+                    }
+                } catch (e: Exception) { }
+                
+                CitaConDetalles(
+                    cita = cita,
+                    clienteNombre = cliente?.nombre ?: "Desconocido",
+                    clienteTelefono = cliente?.telefono ?: "",
+                    perroNombre = perro?.nombre ?: "Desconocido",
+                    perroRaza = perro?.raza ?: "",
+                    serviciosNombres = serviciosNombres
+                )
+            }
+            _citasConDetalles.postValue(citasEnriquecidas)
+        }
     }
     
     fun loadCitasHoy() {
@@ -57,6 +96,7 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             val id = citaDao.insert(cita)
             loadCitasHoy()
             loadCitasSemana()
+            notifyDataChanged()
             onResult(id)
         }
     }
@@ -66,6 +106,7 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             citaDao.update(cita)
             loadCitasHoy()
             loadCitasSemana()
+            notifyDataChanged()
         }
     }
     
@@ -74,6 +115,7 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             citaDao.delete(cita)
             loadCitasHoy()
             loadCitasSemana()
+            notifyDataChanged()
         }
     }
     
@@ -82,6 +124,7 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             citaDao.update(cita.copy(estado = "completada"))
             loadCitasHoy()
             loadCitasSemana()
+            notifyDataChanged()
         }
     }
     
@@ -90,6 +133,7 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             citaDao.update(cita.copy(estado = "cancelada"))
             loadCitasHoy()
             loadCitasSemana()
+            notifyDataChanged()
         }
     }
     

@@ -73,9 +73,29 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Define precios por tamaño y pelo"
+                android:text="Define precios por raza, tamaño y pelo"
                 android:textSize="12sp"
                 android:textColor="#666666" />
+
+            <!-- Raza selector -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Raza"
+                    android:textSize="12sp" />
+
+                <Spinner
+                    android:id="@+id/spinnerRazaCombo"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="@android:drawable/btn_dropdown" />
+            </LinearLayout>
 
             <!-- Combinación de precio -->
             <LinearLayout

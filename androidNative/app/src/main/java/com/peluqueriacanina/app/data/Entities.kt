@@ -44,6 +44,7 @@ data class PrecioServicio(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val servicioId: Long,
+    val raza: String? = null,
     val tamano: String,
     val longitudPelo: String,
     val precio: Double

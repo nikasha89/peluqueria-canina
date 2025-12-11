@@ -25,6 +25,7 @@ import com.peluqueriacanina.app.ui.adapter.ServicioAdapter
 import com.peluqueriacanina.app.viewmodel.ServicioViewModel
 
 data class CombinacionPrecio(
+    val raza: String,
     val tamano: String,
     val longitudPelo: String,
     val precio: Double
@@ -80,6 +81,7 @@ class ServiciosFragment : Fragment() {
         val spinnerTipoPrecio = dialogView.findViewById<Spinner>(R.id.spinnerTipoPrecio)
         val layoutPrecioFijo = dialogView.findViewById<LinearLayout>(R.id.layoutPrecioFijo)
         val layoutPrecioVariable = dialogView.findViewById<LinearLayout>(R.id.layoutPrecioVariable)
+        val spinnerRazaCombo = dialogView.findViewById<Spinner>(R.id.spinnerRazaCombo)
         val spinnerTamanoCombo = dialogView.findViewById<Spinner>(R.id.spinnerTamanoCombo)
         val spinnerPeloCombo = dialogView.findViewById<Spinner>(R.id.spinnerPeloCombo)
         val inputPrecioCombo = dialogView.findViewById<EditText>(R.id.inputPrecioCombo)
@@ -104,6 +106,14 @@ class ServiciosFragment : Fragment() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
+        // Setup raza spinner from database (sin opción "Todas las razas")
+        val razasList = mutableListOf<String>()
+        servicioViewModel.allRazas.observe(viewLifecycleOwner) { razas ->
+            razasList.clear()
+            razasList.addAll(razas.map { it.nombre })
+            spinnerRazaCombo.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, razasList)
+        }
+
         // Setup combinacion spinners
         val tamanos = listOf("mini", "pequeno", "mediano", "grande", "gigante")
         val pelos = listOf("corto", "medio", "largo")
@@ -112,6 +122,7 @@ class ServiciosFragment : Fragment() {
 
         // Add combination button
         btnAddCombo.setOnClickListener {
+            val raza = spinnerRazaCombo.selectedItem?.toString() ?: ""
             val tamano = spinnerTamanoCombo.selectedItem.toString()
             val pelo = spinnerPeloCombo.selectedItem.toString()
             val precioStr = inputPrecioCombo.text.toString().trim()
@@ -123,13 +134,13 @@ class ServiciosFragment : Fragment() {
             }
             
             // Check if combination already exists
-            val exists = combinaciones.any { it.tamano == tamano && it.longitudPelo == pelo }
+            val exists = combinaciones.any { it.raza == raza && it.tamano == tamano && it.longitudPelo == pelo }
             if (exists) {
                 Toast.makeText(context, "Esta combinación ya existe", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             
-            combinaciones.add(CombinacionPrecio(tamano, pelo, precio))
+            combinaciones.add(CombinacionPrecio(raza, tamano, pelo, precio))
             updateCombinacionesUI(layoutCombinaciones, txtCombinacionesLabel)
             inputPrecioCombo.text.clear()
         }
@@ -179,6 +190,7 @@ class ServiciosFragment : Fragment() {
                     servicioViewModel.insertServicioConPrecios(servicio, combinaciones.map { combo ->
                         PrecioServicio(
                             servicioId = 0, // Will be set in ViewModel
+                            raza = combo.raza.ifBlank { null },
                             tamano = combo.tamano,
                             longitudPelo = combo.longitudPelo,
                             precio = combo.precio
@@ -196,8 +208,9 @@ class ServiciosFragment : Fragment() {
         label.visibility = if (combinaciones.isEmpty()) View.GONE else View.VISIBLE
         
         combinaciones.forEachIndexed { index, combo ->
+            val razaText = if (combo.raza.isBlank()) "" else "${combo.raza} - "
             val itemView = TextView(requireContext()).apply {
-                text = "• ${combo.tamano} / ${combo.longitudPelo}: ${combo.precio}€"
+                text = "• $razaText${combo.tamano} / ${combo.longitudPelo}: ${combo.precio}€"
                 textSize = 14f
                 setPadding(0, 4, 0, 4)
                 setOnClickListener {
@@ -219,6 +232,7 @@ class ServiciosFragment : Fragment() {
         val spinnerTipoPrecio = dialogView.findViewById<Spinner>(R.id.spinnerTipoPrecio)
         val layoutPrecioFijo = dialogView.findViewById<LinearLayout>(R.id.layoutPrecioFijo)
         val layoutPrecioVariable = dialogView.findViewById<LinearLayout>(R.id.layoutPrecioVariable)
+        val spinnerRazaCombo = dialogView.findViewById<Spinner>(R.id.spinnerRazaCombo)
         val spinnerTamanoCombo = dialogView.findViewById<Spinner>(R.id.spinnerTamanoCombo)
         val spinnerPeloCombo = dialogView.findViewById<Spinner>(R.id.spinnerPeloCombo)
         val inputPrecioCombo = dialogView.findViewById<EditText>(R.id.inputPrecioCombo)
@@ -236,6 +250,14 @@ class ServiciosFragment : Fragment() {
         spinnerTipoPrecio.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, tiposPrecio)
         spinnerTipoPrecio.setSelection(if (servicio.tipoPrecio == "fijo") 0 else 1)
         
+        // Setup raza spinner from database (sin opción "Todas las razas")
+        val razasList = mutableListOf<String>()
+        servicioViewModel.allRazas.observe(viewLifecycleOwner) { razas ->
+            razasList.clear()
+            razasList.addAll(razas.map { it.nombre })
+            spinnerRazaCombo.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, razasList)
+        }
+        
         // Show correct layout based on tipo
         if (servicio.tipoPrecio == "variable") {
             layoutPrecioFijo.visibility = View.GONE
@@ -245,7 +267,7 @@ class ServiciosFragment : Fragment() {
             servicioViewModel.getPreciosForServicio(servicio.id).observe(viewLifecycleOwner) { precios ->
                 combinaciones.clear()
                 precios.forEach { precio ->
-                    combinaciones.add(CombinacionPrecio(precio.tamano, precio.longitudPelo, precio.precio))
+                    combinaciones.add(CombinacionPrecio(precio.raza ?: "", precio.tamano, precio.longitudPelo, precio.precio))
                 }
                 updateCombinacionesUI(layoutCombinaciones, txtCombinacionesLabel)
             }
@@ -272,6 +294,7 @@ class ServiciosFragment : Fragment() {
 
         // Add combination button
         btnAddCombo.setOnClickListener {
+            val raza = spinnerRazaCombo.selectedItem?.toString() ?: ""
             val tamano = spinnerTamanoCombo.selectedItem.toString()
             val pelo = spinnerPeloCombo.selectedItem.toString()
             val precioStr = inputPrecioCombo.text.toString().trim()
@@ -282,13 +305,13 @@ class ServiciosFragment : Fragment() {
                 return@setOnClickListener
             }
             
-            val exists = combinaciones.any { it.tamano == tamano && it.longitudPelo == pelo }
+            val exists = combinaciones.any { it.raza == raza && it.tamano == tamano && it.longitudPelo == pelo }
             if (exists) {
                 Toast.makeText(context, "Esta combinación ya existe", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             
-            combinaciones.add(CombinacionPrecio(tamano, pelo, precio))
+            combinaciones.add(CombinacionPrecio(raza, tamano, pelo, precio))
             updateCombinacionesUI(layoutCombinaciones, txtCombinacionesLabel)
             inputPrecioCombo.text.clear()
         }
@@ -331,6 +354,7 @@ class ServiciosFragment : Fragment() {
                     servicioViewModel.updateServicioConPrecios(updated, combinaciones.map { combo ->
                         PrecioServicio(
                             servicioId = servicio.id,
+                            raza = combo.raza.ifBlank { null },
                             tamano = combo.tamano,
                             longitudPelo = combo.longitudPelo,
                             precio = combo.precio
