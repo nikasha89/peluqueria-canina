@@ -1,0 +1,48 @@
+[versions]
+# Android Gradle Plugin version
+agp = "8.13.1"
+kotlin = "1.9.0"
+
+# Android SDK versions
+compileSdk = "34"
+minSdk = "22"
+targetSdk = "34"
+
+# AndroidX libraries
+androidx-appcompat = "1.6.1"
+androidx-coordinatorlayout = "1.2.0"
+androidx-core-splashscreen = "1.0.1"
+androidx-core = "1.12.0"
+androidx-fragment = "1.6.2"
+androidx-junit = "1.1.5"
+androidx-espresso-core = "3.5.1"
+androidx-webkit = "1.9.0"
+
+# Google services
+google-services = "4.4.0"
+google-auth = "20.7.0"
+
+# Testing
+junit = "4.13.2"
+
+# Cordova
+cordova-android = "10.1.1"
+
+[libraries]
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
+androidx-coordinatorlayout = { group = "androidx.coordinatorlayout", name = "coordinatorlayout", version.ref = "androidx-coordinatorlayout" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
+androidx-core = { group = "androidx.core", name = "core", version.ref = "androidx-core" }
+androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "androidx-fragment" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-junit" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
+androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "androidx-webkit" }
+
+google-play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "google-auth" }
+
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }

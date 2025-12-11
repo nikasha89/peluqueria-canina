@@ -1,0 +1,62 @@
+com.peluqueriacanina.app-material-1.11.0-0 C:\Users\nikas\.gradle\caches\8.13\transforms\08f053679136868fc374b3f86b6618f0\transformed\material-1.11.0\res
+com.peluqueriacanina.app-fragment-ktx-1.6.2-1 C:\Users\nikas\.gradle\caches\8.13\transforms\0cbbeeb381f8576dffa59f79afdc7ef3\transformed\fragment-ktx-1.6.2\res
+com.peluqueriacanina.app-emoji2-views-helper-1.2.0-2 C:\Users\nikas\.gradle\caches\8.13\transforms\118d3feb4fca49a38224e5d4184ab54c\transformed\emoji2-views-helper-1.2.0\res
+com.peluqueriacanina.app-play-services-base-18.0.1-3 C:\Users\nikas\.gradle\caches\8.13\transforms\18bc84e4aa0096cac637d26727583a62\transformed\play-services-base-18.0.1\res
+com.peluqueriacanina.app-lifecycle-livedata-ktx-2.7.0-4 C:\Users\nikas\.gradle\caches\8.13\transforms\1bff82616b78f30254c95e6189c4466d\transformed\lifecycle-livedata-ktx-2.7.0\res
+com.peluqueriacanina.app-navigation-fragment-ktx-2.7.6-5 C:\Users\nikas\.gradle\caches\8.13\transforms\247b441ce1fe0a786ce9eb66f16fdf3d\transformed\navigation-fragment-ktx-2.7.6\res
+com.peluqueriacanina.app-lifecycle-runtime-2.7.0-6 C:\Users\nikas\.gradle\caches\8.13\transforms\2b759bdd4ad395e6f5010242c4b2ab2d\transformed\lifecycle-runtime-2.7.0\res
+com.peluqueriacanina.app-emoji2-1.2.0-7 C:\Users\nikas\.gradle\caches\8.13\transforms\340d97f23990fea96d102bb155478e5b\transformed\emoji2-1.2.0\res
+com.peluqueriacanina.app-core-ktx-1.12.0-8 C:\Users\nikas\.gradle\caches\8.13\transforms\3cd82df37a3b933c5aa45178b2e40d83\transformed\core-ktx-1.12.0\res
+com.peluqueriacanina.app-customview-poolingcontainer-1.0.0-9 C:\Users\nikas\.gradle\caches\8.13\transforms\436eb12beb1111c3a785861e9c102ead\transformed\customview-poolingcontainer-1.0.0\res
+com.peluqueriacanina.app-activity-ktx-1.8.0-10 C:\Users\nikas\.gradle\caches\8.13\transforms\49134a36189ab923376f7cf09727cc8b\transformed\activity-ktx-1.8.0\res
+com.peluqueriacanina.app-core-1.12.0-11 C:\Users\nikas\.gradle\caches\8.13\transforms\4989369ecd71c2b4f11aff1110a8959d\transformed\core-1.12.0\res
+com.peluqueriacanina.app-lifecycle-viewmodel-ktx-2.7.0-12 C:\Users\nikas\.gradle\caches\8.13\transforms\4dc68d4c7e8650124dea8d1663bf3b18\transformed\lifecycle-viewmodel-ktx-2.7.0\res
+com.peluqueriacanina.app-swiperefreshlayout-1.1.0-13 C:\Users\nikas\.gradle\caches\8.13\transforms\510870500c6e43f13c00535a16a7fe93\transformed\swiperefreshlayout-1.1.0\res
+com.peluqueriacanina.app-lifecycle-livedata-core-2.7.0-14 C:\Users\nikas\.gradle\caches\8.13\transforms\51418461459408d8d9fce25b4606fbf5\transformed\lifecycle-livedata-core-2.7.0\res
+com.peluqueriacanina.app-core-runtime-2.2.0-15 C:\Users\nikas\.gradle\caches\8.13\transforms\56935cf8e6d9a6278fb6b9fe1868ff52\transformed\core-runtime-2.2.0\res
+com.peluqueriacanina.app-navigation-runtime-2.7.6-16 C:\Users\nikas\.gradle\caches\8.13\transforms\594ea3b98a9d92273731eed6531e8f9e\transformed\navigation-runtime-2.7.6\res
+com.peluqueriacanina.app-navigation-common-ktx-2.7.6-17 C:\Users\nikas\.gradle\caches\8.13\transforms\610ccabc24ee4ccbad0538e5846f8ebf\transformed\navigation-common-ktx-2.7.6\res
+com.peluqueriacanina.app-fragment-1.6.2-18 C:\Users\nikas\.gradle\caches\8.13\transforms\661ded86618fbf75b51a39a2a3f9d7a7\transformed\fragment-1.6.2\res
+com.peluqueriacanina.app-coordinatorlayout-1.1.0-19 C:\Users\nikas\.gradle\caches\8.13\transforms\68db6dae65df363c92b90c4aa49f0465\transformed\coordinatorlayout-1.1.0\res
+com.peluqueriacanina.app-transition-1.4.1-20 C:\Users\nikas\.gradle\caches\8.13\transforms\68fc5ca13c20e6afe2246cc7e3a3e804\transformed\transition-1.4.1\res
+com.peluqueriacanina.app-startup-runtime-1.1.1-21 C:\Users\nikas\.gradle\caches\8.13\transforms\6df7e59b843da2fafa004bc732183791\transformed\startup-runtime-1.1.1\res
+com.peluqueriacanina.app-lifecycle-runtime-ktx-2.7.0-22 C:\Users\nikas\.gradle\caches\8.13\transforms\736d010f86fea354087d2a22ee53c727\transformed\lifecycle-runtime-ktx-2.7.0\res
+com.peluqueriacanina.app-play-services-basement-18.2.0-23 C:\Users\nikas\.gradle\caches\8.13\transforms\75241c0b521a174de31e672d04909f8c\transformed\play-services-basement-18.2.0\res
+com.peluqueriacanina.app-lifecycle-viewmodel-savedstate-2.7.0-24 C:\Users\nikas\.gradle\caches\8.13\transforms\76f8282ec7890cd69b14ec01830eff17\transformed\lifecycle-viewmodel-savedstate-2.7.0\res
+com.peluqueriacanina.app-navigation-runtime-ktx-2.7.6-25 C:\Users\nikas\.gradle\caches\8.13\transforms\7aa16115ec0371b4db6beb455dbd22ba\transformed\navigation-runtime-ktx-2.7.6\res
+com.peluqueriacanina.app-profileinstaller-1.3.0-26 C:\Users\nikas\.gradle\caches\8.13\transforms\81f0854bd0c89f0283632eb4614996fb\transformed\profileinstaller-1.3.0\res
+com.peluqueriacanina.app-annotation-experimental-1.3.0-27 C:\Users\nikas\.gradle\caches\8.13\transforms\8210ba4b333578da0f4c43474189e87e\transformed\annotation-experimental-1.3.0\res
+com.peluqueriacanina.app-lifecycle-process-2.7.0-28 C:\Users\nikas\.gradle\caches\8.13\transforms\839bbd8a743766978fec19ec7537878a\transformed\lifecycle-process-2.7.0\res
+com.peluqueriacanina.app-navigation-fragment-2.7.6-29 C:\Users\nikas\.gradle\caches\8.13\transforms\873a8fbb302676beb59cf4f1d4a21603\transformed\navigation-fragment-2.7.6\res
+com.peluqueriacanina.app-cardview-1.0.0-30 C:\Users\nikas\.gradle\caches\8.13\transforms\9575fe36cecf82c2a2f853ff31c4f2ab\transformed\cardview-1.0.0\res
+com.peluqueriacanina.app-drawerlayout-1.1.1-31 C:\Users\nikas\.gradle\caches\8.13\transforms\95852b5130e4abb4fdaa75720654e347\transformed\drawerlayout-1.1.1\res
+com.peluqueriacanina.app-room-ktx-2.6.1-32 C:\Users\nikas\.gradle\caches\8.13\transforms\a0567cea335a0bbd880445f3c07a4908\transformed\room-ktx-2.6.1\res
+com.peluqueriacanina.app-navigation-ui-2.7.6-33 C:\Users\nikas\.gradle\caches\8.13\transforms\a609b367e92390f2eec5f773276b740e\transformed\navigation-ui-2.7.6\res
+com.peluqueriacanina.app-sqlite-2.4.0-34 C:\Users\nikas\.gradle\caches\8.13\transforms\a8700ab534020d957a2999c33322078c\transformed\sqlite-2.4.0\res
+com.peluqueriacanina.app-constraintlayout-2.1.4-35 C:\Users\nikas\.gradle\caches\8.13\transforms\aa50b483a0751b56137ccd29140a951f\transformed\constraintlayout-2.1.4\res
+com.peluqueriacanina.app-sqlite-framework-2.4.0-36 C:\Users\nikas\.gradle\caches\8.13\transforms\af1a148f03f9cf2fb9c589328c8e70c7\transformed\sqlite-framework-2.4.0\res
+com.peluqueriacanina.app-window-1.0.0-37 C:\Users\nikas\.gradle\caches\8.13\transforms\b07dcdb7a8fd4c02cf1de6de2f637894\transformed\window-1.0.0\res
+com.peluqueriacanina.app-viewpager2-1.1.0-beta02-38 C:\Users\nikas\.gradle\caches\8.13\transforms\b40435b63dcbfc0964710fa77c3f0905\transformed\viewpager2-1.1.0-beta02\res
+com.peluqueriacanina.app-appcompat-resources-1.6.1-39 C:\Users\nikas\.gradle\caches\8.13\transforms\bd3d2334da16604e162938d84dea30ae\transformed\appcompat-resources-1.6.1\res
+com.peluqueriacanina.app-savedstate-1.2.1-40 C:\Users\nikas\.gradle\caches\8.13\transforms\c561aeafd5efb36fb5694155b84ff420\transformed\savedstate-1.2.1\res
+com.peluqueriacanina.app-recyclerview-1.3.2-41 C:\Users\nikas\.gradle\caches\8.13\transforms\c6ec1a7df5ea98f8172ce8444bac9399\transformed\recyclerview-1.3.2\res
+com.peluqueriacanina.app-room-runtime-2.6.1-42 C:\Users\nikas\.gradle\caches\8.13\transforms\c8e5a4e9c5c5bbf252782d93a856eed9\transformed\room-runtime-2.6.1\res
+com.peluqueriacanina.app-savedstate-ktx-1.2.1-43 C:\Users\nikas\.gradle\caches\8.13\transforms\cd7e052aaabaabd0349873094c724b78\transformed\savedstate-ktx-1.2.1\res
+com.peluqueriacanina.app-navigation-common-2.7.6-44 C:\Users\nikas\.gradle\caches\8.13\transforms\d2dde90e70af0891347a466d8738438f\transformed\navigation-common-2.7.6\res
+com.peluqueriacanina.app-lifecycle-viewmodel-2.7.0-45 C:\Users\nikas\.gradle\caches\8.13\transforms\d8a0740be7498a295f8a67b98c78d0a9\transformed\lifecycle-viewmodel-2.7.0\res
+com.peluqueriacanina.app-navigation-ui-ktx-2.7.6-46 C:\Users\nikas\.gradle\caches\8.13\transforms\decb17fcff478b2451d6825f5c147c8c\transformed\navigation-ui-ktx-2.7.6\res
+com.peluqueriacanina.app-slidingpanelayout-1.2.0-47 C:\Users\nikas\.gradle\caches\8.13\transforms\e245c52cd92707676b8ba72c34609bdd\transformed\slidingpanelayout-1.2.0\res
+com.peluqueriacanina.app-play-services-auth-20.7.0-48 C:\Users\nikas\.gradle\caches\8.13\transforms\eb5946872b2a952b9278c0f2b1d255db\transformed\play-services-auth-20.7.0\res
+com.peluqueriacanina.app-lifecycle-livedata-2.7.0-49 C:\Users\nikas\.gradle\caches\8.13\transforms\ed1379e4ba31e6d1ff894b90bb1eb14c\transformed\lifecycle-livedata-2.7.0\res
+com.peluqueriacanina.app-appcompat-1.6.1-50 C:\Users\nikas\.gradle\caches\8.13\transforms\f62a15e7c701740c8c736d9216cd5c9e\transformed\appcompat-1.6.1\res
+com.peluqueriacanina.app-activity-1.8.0-51 C:\Users\nikas\.gradle\caches\8.13\transforms\fb0cd919c312414f9edbc485ffaf411e\transformed\activity-1.8.0\res
+com.peluqueriacanina.app-lifecycle-livedata-core-ktx-2.7.0-52 C:\Users\nikas\.gradle\caches\8.13\transforms\fbc17f0259a8558430086e5cc461e46e\transformed\lifecycle-livedata-core-ktx-2.7.0\res
+com.peluqueriacanina.app-pngs-53 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\generated\res\pngs\debug
+com.peluqueriacanina.app-res-54 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\generated\res\processDebugGoogleServices
+com.peluqueriacanina.app-resValues-55 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\generated\res\resValues\debug
+com.peluqueriacanina.app-updated_navigation_xml-56 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\generated\updated_navigation_xml\debug
+com.peluqueriacanina.app-packageDebugResources-57 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.peluqueriacanina.app-packageDebugResources-58 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.peluqueriacanina.app-debug-59 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.peluqueriacanina.app-debug-60 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\src\debug\res
+com.peluqueriacanina.app-main-61 C:\Users\nikas\Downloads\Perruquería canina\androidNative\app\src\main\res

@@ -8,7 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Registrar el plugin de Google Auth
+        // Registrar el plugin de Google Auth (Modo Nativo)
         registerPlugin(GoogleAuth.class);
     }
 }

@@ -34,6 +34,15 @@ class PeluqueriaCanina {
         this.inicializar();
     }
 
+    // ========== HELPER: Obtener elemento con seguridad ==========
+    getElement(id) {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn(`⚠️ Elemento '${id}' no encontrado en el DOM (puede estar oculto o no cargado)`);
+        }
+        return el;
+    }
+
     inicializar() {
         this.configurarFormulario();
         this.configurarFormularioServicio();
@@ -852,20 +861,41 @@ class PeluqueriaCanina {
         const raza = this.razas.find(r => r.id === id);
         if (!raza) return;
 
-        document.getElementById('nombreRaza').value = raza.nombre;
-        document.getElementById('razaEditId').value = raza.id;
-        document.getElementById('btnGuardarRaza').textContent = 'Actualizar Raza';
-        document.getElementById('btnCancelarRaza').style.display = 'inline-block';
+        const nombreInput = this.getElement('nombreRaza');
+        const razaEditId = this.getElement('razaEditId');
+        const btnGuardar = this.getElement('btnGuardarRaza');
+        const btnCancelar = this.getElement('btnCancelarRaza');
+        const razaForm = this.getElement('razaForm');
+
+        if (!nombreInput || !razaEditId || !btnGuardar || !btnCancelar || !razaForm) {
+            console.warn('⚠️ Formulario de razas no disponible');
+            return;
+        }
+
+        nombreInput.value = raza.nombre;
+        razaEditId.value = raza.id;
+        btnGuardar.textContent = 'Actualizar Raza';
+        btnCancelar.style.display = 'inline-block';
 
         // Scroll al formulario
-        document.getElementById('razaForm').scrollIntoView({ behavior: 'smooth' });
+        razaForm.scrollIntoView({ behavior: 'smooth' });
     }
 
     cancelarEdicionRaza() {
-        document.getElementById('razaForm').reset();
-        document.getElementById('razaEditId').value = '';
-        document.getElementById('btnGuardarRaza').textContent = 'Agregar Raza';
-        document.getElementById('btnCancelarRaza').style.display = 'none';
+        const razaForm = this.getElement('razaForm');
+        const razaEditId = this.getElement('razaEditId');
+        const btnGuardar = this.getElement('btnGuardarRaza');
+        const btnCancelar = this.getElement('btnCancelarRaza');
+
+        if (!razaForm || !razaEditId || !btnGuardar || !btnCancelar) {
+            console.warn('⚠️ Formulario de razas no disponible');
+            return;
+        }
+
+        razaForm.reset();
+        razaEditId.value = '';
+        btnGuardar.textContent = 'Agregar Raza';
+        btnCancelar.style.display = 'none';
     }
 
     eliminarRaza(id) {

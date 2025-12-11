@@ -544,30 +544,9 @@
     <script src="config.js"></script>
 
     <!-- Google API Scripts - Solo cargar en navegador web, NO en Capacitor -->
-    <script>
-        // Detectar si estamos en Capacitor (app nativa)
-        const isCapacitor = window.Capacitor !== undefined;
-        
-        if (!isCapacitor) {
-            // Solo cargar scripts de Google Web en navegador
-            console.log('🌐 Navegador detectado - Cargando Google Web APIs');
-            
-            // Cargar gapi
-            const gapiScript = document.createElement('script');
-            gapiScript.src = 'https://apis.google.com/js/api.js';
-            document.head.appendChild(gapiScript);
-            
-            // Cargar Google Identity Services
-            const gisScript = document.createElement('script');
-            gisScript.src = 'https://accounts.google.com/gsi/client';
-            gisScript.async = true;
-            gisScript.defer = true;
-            document.head.appendChild(gisScript);
-        } else {
-            console.log('📱 Capacitor detectado - Usando Google Auth nativo');
-        }
-    </script>
-
+    <script async src="https://accounts.google.com/gsi/client"></script>
+    <script async src="https://apis.google.com/js/api.js"></script>
+    
     <!-- OAuth Integration -->
     <script src="oauth-manager-v2.js"></script>
     <script src="oauth-integration.js"></script>

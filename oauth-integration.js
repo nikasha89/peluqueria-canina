@@ -12,9 +12,11 @@ class OAuthIntegration {
         this.nativeUser = null;
         this.capacitorReady = false;
         
-        // Esperar a que Capacitor esté listo antes de inicializar
+        // Usar Web API en lugar del plugin nativo (más confiable)
         if (this.isNativeApp) {
-            this.esperarCapacitorListo();
+            console.log('📱 Capacitor detectado - Usando Web API para autenticación');
+            this.configurarEventosOAuth();
+            this.actualizarUI();
         } else {
             this.configurarEventosOAuth();
             this.actualizarUI();
@@ -132,79 +134,101 @@ class OAuthIntegration {
         }
     }
     
-    // Login con autenticación nativa
+    // Login usando Custom Tabs (navegador externo) - funciona en Capacitor
     async loginNativo() {
-        console.log('🚀 loginNativo() iniciado');
+        console.log('🚀 loginNativo() iniciado - usando Custom Tabs');
         
         try {
-            // Validaciones básicas
-            if (!this.isNativeApp) {
-                throw new Error('No estás en una app nativa');
-            }
+            // Configuración OAuth - Usando el Web Client ID que funciona
+            const clientId = '336593129164-givp069psmaqa62a59q554vp9crllmhs.apps.googleusercontent.com';
+            // Usar https://localhost que ya está autorizado en Google Cloud
+            const redirectUri = 'https://localhost/oauth-callback';
+            const scopes = [
+                'openid',
+                'profile', 
+                'email',
+                'https://www.googleapis.com/auth/calendar.readonly',
+                'https://www.googleapis.com/auth/calendar.events',
+                'https://www.googleapis.com/auth/drive.file'
+            ].join(' ');
             
-            if (!this.capacitorReady || !this.googleAuth) {
-                alert('⏳ El plugin de Google Auth aún no está listo.\n\nEspera un momento e intenta de nuevo.');
-                throw new Error('El plugin aún no está listo');
-            }
+            // Construir URL de OAuth
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${encodeURIComponent(clientId)}` +
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                `&response_type=token` +
+                `&scope=${encodeURIComponent(scopes)}` +
+                `&include_granted_scopes=true` +
+                `&prompt=select_account`;
             
-            console.log('🔐 Llamando a GoogleAuth.signIn()...');
+            console.log('🌐 Abriendo navegador para autenticación...');
+            console.log('🔗 Redirect URI:', redirectUri);
             
-            // Llamar al método signIn del plugin con scopes explícitos
-            // Algunos plugins requieren que los scopes se pasen también aquí
-            const user = await this.googleAuth.signIn();
+            // Guardar que estamos esperando OAuth
+            localStorage.setItem('oauth_pending', 'true');
             
-            console.log('✅ SignIn exitoso:', user);
-            console.log('✅ User data:', JSON.stringify(user, null, 2));
+            // Importar el plugin Browser de Capacitor
+            const { Browser } = await import('@capacitor/browser');
             
-            // DIAGNÓSTICO: Verificar qué scopes se obtuvieron
-            if (user.authentication && user.authentication.scopes) {
-                console.log('📋 Scopes obtenidos:', user.authentication.scopes);
-            } else {
-                console.warn('⚠️ No se obtuvieron scopes en authentication');
-            }
+            // Abrir el navegador
+            await Browser.open({ 
+                url: authUrl,
+                presentationStyle: 'fullscreen'
+            });
             
-            // Verificar el token
-            if (user.authentication && user.authentication.accessToken) {
-                console.log('🔑 Access Token recibido:', user.authentication.accessToken.substring(0, 20) + '...');
-            }
-            
-            // Validar respuesta
-            if (!user) {
-                throw new Error('No se recibió información del usuario');
-            }
-            
-            if (!user.authentication) {
-                console.error('❌ No hay authentication en user:', user);
-                throw new Error('No se recibió token de autenticación');
-            }
-            
-            // Guardar usuario
-            this.nativeUser = user;
-            
-            // Emitir evento
-            window.dispatchEvent(new CustomEvent('oauthLoginCompleto', {
-                detail: {
-                    usuario: {
-                        nombre: user.givenName || user.displayName || user.name || 'Usuario',
-                        email: user.email || '',
-                        foto: user.imageUrl || ''
-                    },
-                    accessToken: user.authentication.accessToken || ''
-                }
-            }));
-            
-            console.log('✅ Login completado correctamente');
-            alert('✅ Login exitoso!\n\nUsuario: ' + (user.email || 'Sin email'));
-            return user;
+            console.log('📱 Navegador abierto - esperando autenticación...');
+            alert('Después de iniciar sesión con Google, vuelve a esta app.\n\nSi ves una página en blanco después del login, simplemente cierra el navegador y vuelve aquí.');
             
         } catch (error) {
-            console.error('❌ Error en loginNativo:');
-            console.error('  Error completo:', error);
-            console.error('  Mensaje:', error.message || 'sin mensaje');
-            console.error('  Código:', error.code || 'sin código');
-            console.error('  Error tipo:', typeof error);
-            console.error('  Error keys:', Object.keys(error));
+            console.error('❌ Error en login:', error);
+            alert('Error al iniciar sesión: ' + error.message);
+            throw error;
+        }
+    }
+    
+    // Verificar si hay un token guardado
+    verificarTokenGuardado() {
+        const token = localStorage.getItem('google_access_token');
+        if (token) {
+            console.log('✅ Token encontrado en localStorage');
+            this.obtenerInfoUsuarioConToken(token).then(userInfo => {
+                window.dispatchEvent(new CustomEvent('oauthLoginCompleto', {
+                    detail: { usuario: userInfo, accessToken: token }
+                }));
+                this.actualizarUI();
+            });
+        }
+    }
+
+    // Obtener información del usuario usando el access token
+    async obtenerInfoUsuarioConToken(accessToken) {
+        try {
+            const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
             
+            if (!response.ok) {
+                throw new Error('Error obteniendo info de usuario');
+            }
+            
+            const userInfo = await response.json();
+            console.log('👤 Info usuario:', userInfo);
+            
+            return {
+                name: userInfo.name,
+                email: userInfo.email,
+                picture: userInfo.picture,
+                id: userInfo.id
+            };
+        } catch (error) {
+            console.error('❌ Error obteniendo info usuario:', error);
+            return { name: 'Usuario', email: '' };
+        }
+    }
+    
+    // Logout
             // Intentar extraer más info del error
             let errorInfo = '';
             try {
@@ -891,13 +915,28 @@ class OAuthIntegration {
                 };
             }
             
-            const datosCache = this.oauth.obtenerDatosEnCache();
+            // Obtener datos del cache de forma segura
+            let datosCache = null;
+            try {
+                datosCache = this.oauth.obtenerDatosEnCache?.();
+            } catch (e) {
+                console.warn('⚠️ Error al obtener datos del cache, usando valores por defecto');
+                datosCache = null;
+            }
+            
+            // Asegurar que tenemos valores válidos con opcionales
+            const eventoCount = datosCache?.calendar?.count ?? 0;
+            const archivosCount = datosCache?.drive?.count ?? 0;
+            
+            // Validar que sean números
+            const validEventoCount = typeof eventoCount === 'number' ? eventoCount : 0;
+            const validArchivosCount = typeof archivosCount === 'number' ? archivosCount : 0;
             
             return {
-                autenticado: this.oauth.estaAutenticado(),
-                usuario: datosCache.usuario,
-                eventosCalendar: datosCache.calendar.count,
-                archivosGDrive: datosCache.drive.count,
+                autenticado: this.oauth?.estaAutenticado?.() ?? false,
+                usuario: datosCache?.usuario ?? null,
+                eventosCalendar: validEventoCount,
+                archivosGDrive: validArchivosCount,
                 ultimaSincronizacion: this.obtenerUltimaSincronizacion(),
                 plataforma: 'web'
             };
@@ -930,12 +969,15 @@ class OAuthIntegration {
 
 // Inicializar integración cuando la app esté lista
 window.addEventListener('DOMContentLoaded', () => {
-    // Esperar a que oauthManager esté disponible
+    // Esperar a que oauthManager esté disponible O estemos en modo nativo
     const inicializarIntegracion = () => {
-        if (typeof window.oauthManager !== 'undefined') {
-            // Crear integración (app se obtendrá dinámicamente cuando se necesite)
-            window.oauthIntegration = new OAuthIntegration(window.oauthManager);
-            console.log('✅ OAuth Integration inicializado');
+        const esNativo = window.Capacitor !== undefined && window.Capacitor.isNativePlatform?.();
+        
+        if (typeof window.oauthManager !== 'undefined' || esNativo) {
+            // Crear integración (incluso en modo nativo donde oauthManager puede no existir)
+            // OAuthIntegration puede funcionar sin oauthManager si estamos en modo nativo
+            window.oauthIntegration = new OAuthIntegration(window.oauthManager || null);
+            console.log('✅ OAuth Integration inicializado (esNativo=' + esNativo + ')');
             
             // Actualizar UI inicial
             if (typeof window.updateUserUI === 'function') {
@@ -949,3 +991,29 @@ window.addEventListener('DOMContentLoaded', () => {
     
     inicializarIntegracion();
 });
+
+// Fallback: también inicializar en capturerReady (para Capacitor)
+if (window.Capacitor && window.Capacitor.isNativePlatform?.()) {
+    window.addEventListener('capacitorReady', () => {
+        console.log('📱 Capacitor ready detectado');
+        if (!window.oauthIntegration) {
+            window.oauthIntegration = new OAuthIntegration(null);
+            console.log('✅ OAuth Integration inicializado por capacitorReady');
+            if (typeof window.updateUserUI === 'function') {
+                setTimeout(() => window.updateUserUI(), 100);
+            }
+        }
+    });
+    
+    // También intentar en load
+    window.addEventListener('load', () => {
+        console.log('📱 Load event en Capacitor');
+        if (!window.oauthIntegration) {
+            window.oauthIntegration = new OAuthIntegration(null);
+            console.log('✅ OAuth Integration inicializado por load event');
+            if (typeof window.updateUserUI === 'function') {
+                setTimeout(() => window.updateUserUI(), 100);
+            }
+        }
+    });
+}

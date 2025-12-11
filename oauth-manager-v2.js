@@ -2,6 +2,9 @@
  * OAuth Manager v3 - Sistema de autenticación con Google (SIN BACKEND)
  * Maneja la autenticación, tokens y sincronización con Google Calendar y Drive
  * directamente desde el navegador usando la API de Google
+ * 
+ * NOTA: En modo Capacitor (app nativa), este archivo se salta.
+ * La autenticación se maneja con oauth-integration.js y el plugin GoogleAuth.
  */
 
 class OAuthManager {
@@ -43,7 +46,7 @@ class OAuthManager {
         this.sincronizacionActiva = false;
         this.intervaloSincronizacion = null;
         
-        // Inicializar Google API
+        // Inicializar Google API (solo en web)
         this.inicializarGoogleAPI();
     }
     
@@ -53,105 +56,91 @@ class OAuthManager {
         // Detectar si estamos en Capacitor (app nativa)
         const esCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
         
-        if (esCapacitor) {
-            console.log('📱 Capacitor detectado - Saltando inicialización de Google Web API');
-            console.log('ℹ️ La autenticación se manejará con el plugin nativo GoogleAuth');
-            return; // NO inicializar Google Web API en apps nativas
-        }
+        console.log('🚀 Inicializando Google Web API...', esCapacitor ? '(Capacitor)' : '(Web)');
         
-        console.log('🚀 Inicializando Google Web API para navegador...');
-        
-        // Esperar a que los scripts de Google estén disponibles
-        await this.esperarScriptsGoogle();
-        
-        // Detectar si estamos en Capacitor (móvil)
-        const redirectUri = esCapacitor 
-            ? window.location.origin  // En móvil usa el origin de Capacitor
-            : window.location.origin; // En web usa el origin actual
-        
-        console.log('🔧 Inicializando Google API - Entorno:', esCapacitor ? 'Móvil (Capacitor)' : 'Web');
-        console.log('🔧 Redirect URI:', redirectUri);
-        
-        // Inicializar GAPI
-        console.log('📦 Intentando cargar cliente GAPI...');
-        gapi.load('client', async () => {
-            console.log('📦 Callback de gapi.load ejecutado - Cargando cliente GAPI...');
-            try {
-                await gapi.client.init({
-                    apiKey: this.config.apiKey,
-                    discoveryDocs: this.config.discoveryDocs
-                });
-                this.gapiInited = true;
-                console.log('✅ GAPI Client inicializado - gapiInited =', this.gapiInited);
-                this.verificarInicializacion();
-            } catch (error) {
-                console.error('❌ Error inicializando GAPI Client:', error);
-            }
-        });
-        
-        // Inicializar Google Identity Services
-        console.log('🔐 Inicializando Google Identity Services...');
-        this.tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: this.config.clientId,
-            scope: this.config.scopes,
-            callback: (response) => {
-                if (response.error !== undefined) {
-                    console.error('❌ Error en autenticación:', response);
-                    this.emitirEvento('oauthError', { error: response.error });
-                    alert('❌ Error en autenticación: ' + response.error);
-                    return;
+        try {
+            // Esperar a que los scripts de Google estén disponibles
+            await this.esperarScriptsGoogle();
+            
+            console.log('🔧 Scripts de Google cargados - Inicializando cliente...');
+            console.log('🔧 Origin:', window.location.origin);
+            
+            // Inicializar GAPI
+            console.log('📦 Intentando cargar cliente GAPI...');
+            gapi.load('client', async () => {
+                console.log('📦 Callback de gapi.load ejecutado - Cargando cliente GAPI...');
+                try {
+                    await gapi.client.init({
+                        apiKey: this.config.apiKey,
+                        discoveryDocs: this.config.discoveryDocs
+                    });
+                    this.gapiInited = true;
+                    console.log('✅ GAPI Client inicializado - gapiInited =', this.gapiInited);
+                    this.verificarInicializacion();
+                } catch (error) {
+                    console.error('❌ Error inicializando GAPI Client:', error);
                 }
-                
-                console.log('✅ Token recibido');
-                this.accessToken = response.access_token;
-                gapi.client.setToken({ access_token: response.access_token });
-                
-                // Guardar token
-                this.guardarToken(response.access_token);
-                
-                // Obtener información del usuario
-                this.obtenerInfoUsuario().then(() => {
-                    console.log('✅ Usuario autenticado:', this.datosCache.usuario);
-                    // Sincronización manual - no automática
-                    this.emitirEvento('oauthLoginCompleto', { usuario: this.datosCache.usuario });
-                });
-            }
-        });
-        this.gisInited = true;
-        console.log('✅ Google Identity Services inicializado');
-        this.verificarInicializacion();
+            });
+            
+            // Inicializar Google Identity Services
+            console.log('🔐 Inicializando Google Identity Services...');
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.config.clientId,
+                scope: this.config.scopes,
+                callback: (response) => {
+                    if (response.error !== undefined) {
+                        console.error('❌ Error en autenticación:', response);
+                        this.emitirEvento('oauthError', { error: response.error });
+                        alert('❌ Error en autenticación: ' + response.error);
+                        return;
+                    }
+                    
+                    console.log('✅ Token recibido');
+                    this.accessToken = response.access_token;
+                    gapi.client.setToken({ access_token: response.access_token });
+                    
+                    // Guardar token
+                    this.guardarToken(response.access_token);
+                    
+                    // Obtener información del usuario
+                    this.obtenerInfoUsuario().then(() => {
+                        console.log('✅ Usuario autenticado:', this.datosCache.usuario);
+                        // Sincronización manual - no automática
+                        this.emitirEvento('oauthLoginCompleto', { usuario: this.datosCache.usuario });
+                    });
+                }
+            });
+            this.gisInited = true;
+            console.log('✅ Google Identity Services inicializado');
+            this.verificarInicializacion();
+        } catch (error) {
+            console.error('❌ Error en inicialización de Google API:', error);
+        }
     }
     
     async esperarScriptsGoogle() {
         console.log('⏳ Esperando a que los scripts de Google estén disponibles...');
-        
-        // Detectar si estamos en Capacitor
-        const esCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-        
-        if (esCapacitor) {
-            console.log('📱 Modo Capacitor - Scripts de Google no necesarios');
-            throw new Error('Scripts de Google no se cargan en modo nativo');
-        }
+        console.log('🔍 Estado actual: gapi=', typeof gapi, 'google=', typeof google);
         
         return new Promise((resolve, reject) => {
             let intentos = 0;
-            const maxIntentos = 50; // 5 segundos máximo
+            const maxIntentos = 100; // 10 segundos máximo para Capacitor
             
             const checkScripts = () => {
                 intentos++;
                 
                 if (typeof gapi !== 'undefined' && typeof google !== 'undefined' && typeof google.accounts !== 'undefined') {
-                    console.log('✅ Scripts de Google disponibles');
+                    console.log('✅ Scripts de Google disponibles después de', intentos * 100, 'ms');
                     resolve();
                 } else if (intentos >= maxIntentos) {
                     console.error('❌ Scripts de Google no se cargaron después de', maxIntentos * 100, 'ms');
-                    
-                    alert('❌ Error: No se pudieron cargar las APIs de Google\n\n' +
-                          'Verifica tu conexión a internet y recarga la página.');
+                    console.log('🔍 Estado: gapi=', typeof gapi, 'google=', typeof google, 'google.accounts=', typeof google?.accounts);
                     
                     reject(new Error('Scripts de Google no disponibles'));
                 } else {
-                    console.log('⏳ Scripts aún no disponibles, reintentando... (' + intentos + '/' + maxIntentos + ')');
+                    if (intentos % 10 === 0) {
+                        console.log('⏳ Esperando scripts de Google... (' + intentos + '/' + maxIntentos + ')');
+                    }
                     setTimeout(checkScripts, 100);
                 }
             };

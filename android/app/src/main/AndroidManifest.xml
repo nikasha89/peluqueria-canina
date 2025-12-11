@@ -30,6 +30,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="peluqueriacanina.app" />
             </intent-filter>
+            
+            <!-- OAuth Callback - Custom Scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.peluqueriacanina.app" android:host="oauth" />
+            </intent-filter>
 
         </activity>
 

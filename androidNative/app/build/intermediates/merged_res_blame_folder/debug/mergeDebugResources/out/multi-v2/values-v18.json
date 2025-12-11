@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.peluqueriacanina.app-mergeDebugResources-56:/values-v18/values-v18.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\nikas\\.gradle\\caches\\8.13\\transforms\\f62a15e7c701740c8c736d9216cd5c9e\\transformed\\appcompat-1.6.1\\res\\values-v18\\values-v18.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "48",
+                        "endOffsets": "99"
+                    }
+                }
+            ]
+        }
+    ]
+}
