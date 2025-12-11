@@ -24,6 +24,7 @@ data class Perro(
     val tamano: String, // mini, pequeno, mediano, grande, gigante
     val longitudPelo: String, // corto, medio, largo
     val edad: Int? = null,
+    val foto: String? = null, // URI or base64 of photo
     val notas: String = ""
 )
 

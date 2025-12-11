@@ -61,6 +61,30 @@ class ServicioViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
+    fun getPreciosForServicio(servicioId: Long): LiveData<List<PrecioServicio>> {
+        return precioDao.getPreciosByServicio(servicioId)
+    }
+    
+    fun insertServicioConPrecios(servicio: Servicio, precios: List<PrecioServicio>) {
+        viewModelScope.launch {
+            val servicioId = servicioDao.insert(servicio)
+            precios.forEach { precio ->
+                precioDao.insert(precio.copy(servicioId = servicioId))
+            }
+        }
+    }
+    
+    fun updateServicioConPrecios(servicio: Servicio, precios: List<PrecioServicio>) {
+        viewModelScope.launch {
+            servicioDao.update(servicio)
+            // Delete old precios and insert new ones
+            precioDao.deleteByServicio(servicio.id)
+            precios.forEach { precio ->
+                precioDao.insert(precio.copy(servicioId = servicio.id))
+            }
+        }
+    }
+    
     suspend fun calcularPrecio(servicioId: Long, tamano: String, longitudPelo: String): Double {
         val servicio = servicioDao.getServicioById(servicioId) ?: return 0.0
         

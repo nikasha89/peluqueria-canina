@@ -67,12 +67,22 @@ class AgendaFragment : Fragment() {
         }
 
         // Setup filter chips
-        chipTodas.setOnClickListener { loadAllCitas() }
-        chipHoy.setOnClickListener { loadCitasHoy() }
-        chipSemana.setOnClickListener { loadCitasSemana() }
+        chipTodas.setOnClickListener { 
+            selectChip(chipTodas)
+            loadAllCitas() 
+        }
+        chipHoy.setOnClickListener { 
+            selectChip(chipHoy)
+            loadCitasHoy() 
+        }
+        chipSemana.setOnClickListener { 
+            selectChip(chipSemana)
+            loadCitasSemana() 
+        }
 
-        // Load initial data
-        loadCitasHoy()
+        // Load initial data - "Todas" is selected by default
+        selectChip(chipTodas)
+        loadAllCitas()
         
         // Observe stats
         citaViewModel.citasHoy.observe(viewLifecycleOwner) { citas ->
@@ -104,5 +114,11 @@ class AgendaFragment : Fragment() {
         adapter.submitList(citas)
         emptyState.visibility = if (citas.isEmpty()) View.VISIBLE else View.GONE
         recyclerView.visibility = if (citas.isEmpty()) View.GONE else View.VISIBLE
+    }
+    
+    private fun selectChip(selected: Chip) {
+        chipTodas.isChecked = (selected == chipTodas)
+        chipHoy.isChecked = (selected == chipHoy)
+        chipSemana.isChecked = (selected == chipSemana)
     }
 }

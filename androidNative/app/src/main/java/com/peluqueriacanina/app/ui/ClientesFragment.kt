@@ -90,6 +90,7 @@ class ClientesFragment : Fragment() {
         val inputEmail = dialogView.findViewById<EditText>(R.id.inputEmail)
         val inputPerro = dialogView.findViewById<EditText>(R.id.inputNombrePerro)
         val inputRaza = dialogView.findViewById<EditText>(R.id.inputRaza)
+        val inputEdad = dialogView.findViewById<EditText>(R.id.inputEdadPerro)
         val spinnerTamano = dialogView.findViewById<Spinner>(R.id.spinnerTamano)
         val spinnerPelo = dialogView.findViewById<Spinner>(R.id.spinnerPelo)
 
@@ -109,6 +110,8 @@ class ClientesFragment : Fragment() {
                 val email = inputEmail.text.toString().trim()
                 val nombrePerro = inputPerro.text.toString().trim()
                 val raza = inputRaza.text.toString().trim()
+                val edadText = inputEdad?.text.toString().trim()
+                val edad = edadText.toIntOrNull()
                 val tamano = spinnerTamano?.selectedItem?.toString() ?: "mediano"
                 val pelo = spinnerPelo?.selectedItem?.toString() ?: "medio"
 
@@ -131,7 +134,8 @@ class ClientesFragment : Fragment() {
                             nombre = nombrePerro,
                             raza = raza,
                             tamano = tamano,
-                            longitudPelo = pelo
+                            longitudPelo = pelo,
+                            edad = edad
                         )
                         clienteViewModel.insertPerro(perro)
                     }
@@ -148,8 +152,17 @@ class ClientesFragment : Fragment() {
             val perrosText = if (perros.isEmpty()) {
                 "Sin perros registrados"
             } else {
-                perros.joinToString("\n") { "• ${it.nombre} (${it.raza})" }
+                perros.joinToString("\n") { perro ->
+                    val edadText = perro.edad?.let { " - $it años" } ?: ""
+                    "• ${perro.nombre} (${perro.raza})$edadText"
+                }
             }
+
+            val options = mutableListOf("✏️ Editar cliente", "➕ Añadir perro")
+            perros.forEach { perro ->
+                options.add("🐕 Editar ${perro.nombre}")
+            }
+            options.add("🗑️ Eliminar cliente")
 
             AlertDialog.Builder(requireContext())
                 .setTitle(cliente.nombre)
@@ -160,21 +173,131 @@ class ClientesFragment : Fragment() {
                     🐕 Perros:
                     $perrosText
                 """.trimIndent())
-                .setPositiveButton("Cerrar", null)
-                .setNeutralButton("Añadir perro") { _, _ ->
-                    showAddPerroDialog(cliente)
+                .setItems(options.toTypedArray()) { _, which ->
+                    when {
+                        which == 0 -> showEditClienteDialog(cliente)
+                        which == 1 -> showAddPerroDialog(cliente)
+                        which == options.size - 1 -> confirmDelete(cliente)
+                        else -> {
+                            val perroIndex = which - 2
+                            if (perroIndex < perros.size) {
+                                showEditPerroDialog(perros[perroIndex])
+                            }
+                        }
+                    }
                 }
-                .setNegativeButton("Eliminar") { _, _ ->
-                    confirmDelete(cliente)
-                }
+                .setNegativeButton("Cerrar", null)
                 .show()
         }
+    }
+    
+    private fun showEditClienteDialog(cliente: Cliente) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_cliente, null)
+        val inputNombre = dialogView.findViewById<EditText>(R.id.inputNombreCliente)
+        val inputTelefono = dialogView.findViewById<EditText>(R.id.inputTelefono)
+        val inputEmail = dialogView.findViewById<EditText>(R.id.inputEmail)
+        val inputNotas = dialogView.findViewById<EditText>(R.id.inputNotas)
+        
+        // Pre-fill values
+        inputNombre.setText(cliente.nombre)
+        inputTelefono.setText(cliente.telefono)
+        inputEmail.setText(cliente.email)
+        inputNotas?.setText(cliente.notas)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Editar Cliente")
+            .setView(dialogView)
+            .setPositiveButton("Guardar") { _, _ ->
+                val nombre = inputNombre.text.toString().trim()
+                val telefono = inputTelefono.text.toString().trim()
+                val email = inputEmail.text.toString().trim()
+                val notas = inputNotas?.text.toString().trim() ?: ""
+
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                val updated = cliente.copy(
+                    nombre = nombre,
+                    telefono = telefono,
+                    email = email,
+                    notas = notas
+                )
+                clienteViewModel.updateCliente(updated)
+                Toast.makeText(context, "Cliente actualizado", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    
+    private fun showEditPerroDialog(perro: Perro) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_perro, null)
+        val inputNombre = dialogView.findViewById<EditText>(R.id.inputNombrePerroDialog)
+        val inputRaza = dialogView.findViewById<EditText>(R.id.inputRazaDialog)
+        val inputEdad = dialogView.findViewById<EditText>(R.id.inputEdadDialog)
+        val spinnerTamano = dialogView.findViewById<Spinner>(R.id.spinnerTamanoDialog)
+        val spinnerPelo = dialogView.findViewById<Spinner>(R.id.spinnerPeloDialog)
+
+        val tamanos = listOf("mini", "pequeno", "mediano", "grande", "gigante")
+        val pelos = listOf("corto", "medio", "largo")
+        
+        spinnerTamano?.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, tamanos)
+        spinnerPelo?.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, pelos)
+        
+        // Pre-fill values
+        inputNombre.setText(perro.nombre)
+        inputRaza.setText(perro.raza)
+        inputEdad?.setText(perro.edad?.toString() ?: "")
+        spinnerTamano?.setSelection(tamanos.indexOf(perro.tamano).takeIf { it >= 0 } ?: 2)
+        spinnerPelo?.setSelection(pelos.indexOf(perro.longitudPelo).takeIf { it >= 0 } ?: 1)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Editar ${perro.nombre}")
+            .setView(dialogView)
+            .setPositiveButton("Guardar") { _, _ ->
+                val nombre = inputNombre?.text.toString().trim()
+                val raza = inputRaza?.text.toString().trim()
+                val edadText = inputEdad?.text.toString().trim()
+                val edad = edadText.toIntOrNull()
+                val tamano = spinnerTamano?.selectedItem?.toString() ?: perro.tamano
+                val pelo = spinnerPelo?.selectedItem?.toString() ?: perro.longitudPelo
+                
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                val updated = perro.copy(
+                    nombre = nombre,
+                    raza = raza,
+                    tamano = tamano,
+                    longitudPelo = pelo,
+                    edad = edad
+                )
+                clienteViewModel.updatePerro(updated)
+                Toast.makeText(context, "Perro actualizado", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Eliminar") { _, _ ->
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Eliminar perro")
+                    .setMessage("¿Estás seguro de que quieres eliminar a ${perro.nombre}?")
+                    .setPositiveButton("Eliminar") { _, _ ->
+                        clienteViewModel.deletePerro(perro)
+                        Toast.makeText(context, "Perro eliminado", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun showAddPerroDialog(cliente: Cliente) {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_perro, null)
         val inputNombre = dialogView.findViewById<EditText>(R.id.inputNombrePerroDialog)
         val inputRaza = dialogView.findViewById<EditText>(R.id.inputRazaDialog)
+        val inputEdad = dialogView.findViewById<EditText>(R.id.inputEdadDialog)
         val spinnerTamano = dialogView.findViewById<Spinner>(R.id.spinnerTamanoDialog)
         val spinnerPelo = dialogView.findViewById<Spinner>(R.id.spinnerPeloDialog)
 
@@ -190,6 +313,8 @@ class ClientesFragment : Fragment() {
             .setPositiveButton("Guardar") { _, _ ->
                 val nombre = inputNombre?.text.toString().trim()
                 val raza = inputRaza?.text.toString().trim()
+                val edadText = inputEdad?.text.toString().trim()
+                val edad = edadText.toIntOrNull()
                 val tamano = spinnerTamano?.selectedItem?.toString() ?: "mediano"
                 val pelo = spinnerPelo?.selectedItem?.toString() ?: "medio"
                 
@@ -203,7 +328,8 @@ class ClientesFragment : Fragment() {
                     nombre = nombre,
                     raza = raza,
                     tamano = tamano,
-                    longitudPelo = pelo
+                    longitudPelo = pelo,
+                    edad = edad
                 )
                 clienteViewModel.insertPerro(perro)
                 Toast.makeText(context, "Perro añadido correctamente", Toast.LENGTH_SHORT).show()

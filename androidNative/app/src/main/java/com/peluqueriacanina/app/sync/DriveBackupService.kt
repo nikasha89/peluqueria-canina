@@ -171,6 +171,7 @@ class DriveBackupService(
                 put("tamano", perro.tamano)
                 put("longitudPelo", perro.longitudPelo)
                 put("edad", perro.edad ?: 0)
+                put("foto", perro.foto ?: "")
                 put("notas", perro.notas)
             })
         }
@@ -304,6 +305,7 @@ class DriveBackupService(
                             tamano = perroObj.optString("tamano", "mediano"),
                             longitudPelo = perroObj.optString("longitudPelo", "medio"),
                             edad = perroObj.optInt("edad").takeIf { it > 0 },
+                            foto = perroObj.optString("foto").takeIf { it.isNotEmpty() },
                             notas = perroObj.optString("notas", "")
                         )
                     )
@@ -325,6 +327,7 @@ class DriveBackupService(
                         tamano = obj.optString("tamano", "mediano"),
                         longitudPelo = obj.optString("longitudPelo", "medio"),
                         edad = obj.optInt("edad").takeIf { it > 0 },
+                        foto = obj.optString("foto").takeIf { it.isNotEmpty() },
                         notas = obj.optString("notas", "")
                     )
                 )
