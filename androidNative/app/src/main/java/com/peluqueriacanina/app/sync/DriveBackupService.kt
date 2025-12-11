@@ -29,7 +29,7 @@ class DriveBackupService(
     private val driveService: Drive by lazy {
         val credential = GoogleAccountCredential.usingOAuth2(
             context,
-            listOf(DriveScopes.DRIVE_FILE)  // Same scope as webapp
+            listOf(DriveScopes.DRIVE)  // Full drive scope to access webapp backups
         )
         credential.selectedAccount = account.account
 
@@ -240,6 +240,13 @@ class DriveBackupService(
     }
 
     private suspend fun importDatabaseFromJson(backup: JSONObject) {
+        // Webapp stores data inside "datos" object: {version, fecha, datos: {...}}
+        val datos = if (backup.has("datos")) {
+            backup.getJSONObject("datos")
+        } else {
+            backup
+        }
+        
         // Clear existing data (in reverse order of dependencies)
         database.citaDao().deleteAll()
         database.precioServicioDao().deleteAll()
@@ -248,97 +255,203 @@ class DriveBackupService(
         database.servicioDao().deleteAll()
         database.razaDao().deleteAll()
 
-        // Import Clientes
-        val clientesArray = backup.optJSONArray("clientes") ?: JSONArray()
-        for (i in 0 until clientesArray.length()) {
-            val obj = clientesArray.getJSONObject(i)
-            database.clienteDao().insert(
-                Cliente(
-                    id = obj.getLong("id"),
-                    nombre = obj.getString("nombre"),
-                    telefono = obj.getString("telefono"),
-                    email = obj.optString("email", ""),
-                    notas = obj.optString("notas", ""),
-                    fechaCreacion = obj.optLong("fechaCreacion", System.currentTimeMillis())
-                )
-            )
-        }
-
-        // Import Razas
-        val razasArray = backup.optJSONArray("razas") ?: JSONArray()
+        // Import Razas first
+        val razasArray = datos.optJSONArray("razas") ?: JSONArray()
         for (i in 0 until razasArray.length()) {
             val obj = razasArray.getJSONObject(i)
             database.razaDao().insert(
                 Raza(
-                    id = obj.getLong("id"),
+                    id = obj.optLong("id", System.currentTimeMillis() + i),
                     nombre = obj.getString("nombre")
                 )
             )
         }
 
-        // Import Perros
-        val perrosArray = backup.optJSONArray("perros") ?: JSONArray()
-        for (i in 0 until perrosArray.length()) {
-            val obj = perrosArray.getJSONObject(i)
-            database.perroDao().insert(
-                Perro(
-                    id = obj.getLong("id"),
-                    nombre = obj.getString("nombre"),
-                    clienteId = obj.getLong("clienteId"),
-                    raza = obj.optString("raza", ""),
-                    tamano = obj.getString("tamano"),
-                    longitudPelo = obj.optString("longitudPelo", "medio"),
-                    edad = obj.optInt("edad").takeIf { it > 0 },
-                    notas = obj.optString("notas", "")
+        // Import Clientes - webapp has 'perros' embedded inside each cliente
+        val clientesArray = datos.optJSONArray("clientes") ?: JSONArray()
+        
+        var perroIdCounter = System.currentTimeMillis()
+        
+        for (i in 0 until clientesArray.length()) {
+            val obj = clientesArray.getJSONObject(i)
+            val clienteId = obj.optLong("id", System.currentTimeMillis() + i)
+            
+            // Insert cliente
+            database.clienteDao().insert(
+                Cliente(
+                    id = clienteId,
+                    nombre = obj.optString("nombre", ""),
+                    telefono = obj.optString("telefono", ""),
+                    email = obj.optString("email", ""),
+                    notas = obj.optString("notas", ""),
+                    fechaCreacion = obj.optLong("fechaCreacion", System.currentTimeMillis())
                 )
             )
+            
+            // Webapp embeds perros inside cliente object
+            val perrosEmbedded = obj.optJSONArray("perros")
+            if (perrosEmbedded != null) {
+                for (j in 0 until perrosEmbedded.length()) {
+                    val perroObj = perrosEmbedded.getJSONObject(j)
+                    val perroId = perroObj.optLong("id", perroIdCounter++)
+                    
+                    database.perroDao().insert(
+                        Perro(
+                            id = perroId,
+                            nombre = perroObj.optString("nombre", ""),
+                            clienteId = clienteId,
+                            raza = perroObj.optString("raza", ""),
+                            tamano = perroObj.optString("tamano", "mediano"),
+                            longitudPelo = perroObj.optString("longitudPelo", "medio"),
+                            edad = perroObj.optInt("edad").takeIf { it > 0 },
+                            notas = perroObj.optString("notas", "")
+                        )
+                    )
+                }
+            }
+        }
+        
+        // Also check for separate perros array (APK format)
+        val perrosArray = datos.optJSONArray("perros") ?: JSONArray()
+        if (perrosArray.length() > 0) {
+            for (i in 0 until perrosArray.length()) {
+                val obj = perrosArray.getJSONObject(i)
+                database.perroDao().insert(
+                    Perro(
+                        id = obj.getLong("id"),
+                        nombre = obj.getString("nombre"),
+                        clienteId = obj.getLong("clienteId"),
+                        raza = obj.optString("raza", ""),
+                        tamano = obj.optString("tamano", "mediano"),
+                        longitudPelo = obj.optString("longitudPelo", "medio"),
+                        edad = obj.optInt("edad").takeIf { it > 0 },
+                        notas = obj.optString("notas", "")
+                    )
+                )
+            }
         }
 
-        // Import Servicios
-        val serviciosArray = backup.optJSONArray("servicios") ?: JSONArray()
+        // Import Servicios - webapp has different structure with combinaciones
+        val serviciosArray = datos.optJSONArray("servicios") ?: JSONArray()
+        
+        var precioIdCounter = System.currentTimeMillis()
+        
         for (i in 0 until serviciosArray.length()) {
             val obj = serviciosArray.getJSONObject(i)
-            database.servicioDao().insert(
-                Servicio(
-                    id = obj.getLong("id"),
-                    nombre = obj.getString("nombre"),
-                    descripcion = obj.optString("descripcion", ""),
-                    tipoPrecio = obj.optString("tipoPrecio", "fijo"),
-                    precioBase = obj.optDouble("precioBase", 0.0),
-                    activo = obj.optBoolean("activo", true)
+            val servicioId = obj.optLong("id", System.currentTimeMillis() + i)
+            
+            // Check if webapp format (has 'combinaciones') or APK format
+            val combinaciones = obj.optJSONArray("combinaciones")
+            
+            if (combinaciones != null && combinaciones.length() > 0) {
+                // Webapp format - extract base price from first combinacion
+                val firstCombo = combinaciones.getJSONObject(0)
+                val precioBase = firstCombo.optDouble("precio", 0.0)
+                
+                database.servicioDao().insert(
+                    Servicio(
+                        id = servicioId,
+                        nombre = obj.optString("nombre", ""),
+                        descripcion = obj.optString("descripcion", ""),
+                        tipoPrecio = "variable", // Has combinaciones = variable pricing
+                        precioBase = precioBase,
+                        activo = obj.optBoolean("activo", true)
+                    )
                 )
-            )
+                
+                // Import combinaciones as PrecioServicio
+                for (j in 0 until combinaciones.length()) {
+                    val combo = combinaciones.getJSONObject(j)
+                    database.precioServicioDao().insert(
+                        PrecioServicio(
+                            id = precioIdCounter++,
+                            servicioId = servicioId,
+                            tamano = combo.optString("tamano", "mediano"),
+                            longitudPelo = combo.optString("longitudPelo", "medio"),
+                            precio = combo.optDouble("precio", 0.0)
+                        )
+                    )
+                }
+            } else {
+                // APK format or simple service
+                database.servicioDao().insert(
+                    Servicio(
+                        id = servicioId,
+                        nombre = obj.optString("nombre", ""),
+                        descripcion = obj.optString("descripcion", ""),
+                        tipoPrecio = obj.optString("tipoPrecio", "fijo"),
+                        precioBase = obj.optDouble("precioBase", obj.optDouble("precio", 0.0)),
+                        activo = obj.optBoolean("activo", true)
+                    )
+                )
+            }
         }
 
-        // Import Precios
-        val preciosArray = backup.optJSONArray("precios") ?: JSONArray()
-        for (i in 0 until preciosArray.length()) {
-            val obj = preciosArray.getJSONObject(i)
-            database.precioServicioDao().insert(
-                PrecioServicio(
-                    id = obj.getLong("id"),
-                    servicioId = obj.getLong("servicioId"),
-                    tamano = obj.getString("tamano"),
-                    longitudPelo = obj.optString("longitudPelo", "medio"),
-                    precio = obj.getDouble("precio")
+        // Import Precios from separate array (APK format only)
+        val preciosArray = datos.optJSONArray("precios") ?: JSONArray()
+        if (preciosArray.length() > 0) {
+            for (i in 0 until preciosArray.length()) {
+                val obj = preciosArray.getJSONObject(i)
+                database.precioServicioDao().insert(
+                    PrecioServicio(
+                        id = obj.getLong("id"),
+                        servicioId = obj.getLong("servicioId"),
+                        tamano = obj.getString("tamano"),
+                        longitudPelo = obj.optString("longitudPelo", "medio"),
+                        precio = obj.getDouble("precio")
+                    )
                 )
-            )
+            }
         }
 
-        // Import Citas
-        val citasArray = backup.optJSONArray("citas") ?: JSONArray()
+        // Import Citas - webapp uses different field names
+        val citasArray = datos.optJSONArray("citas") ?: JSONArray()
+        
         for (i in 0 until citasArray.length()) {
             val obj = citasArray.getJSONObject(i)
+            
+            // Webapp may use 'fecha' as string "YYYY-MM-DD", APK uses timestamp
+            val fechaValue = obj.opt("fecha")
+            val fechaLong = when (fechaValue) {
+                is Long -> fechaValue
+                is Int -> fechaValue.toLong()
+                is String -> {
+                    try {
+                        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                            .parse(fechaValue)?.time ?: System.currentTimeMillis()
+                    } catch (e: Exception) {
+                        System.currentTimeMillis()
+                    }
+                }
+                else -> System.currentTimeMillis()
+            }
+            
+            // Handle serviciosIds - webapp may have different formats
+            val serviciosIds = when {
+                obj.has("serviciosIds") -> obj.optString("serviciosIds", "[]")
+                obj.has("servicios") -> {
+                    val servs = obj.optJSONArray("servicios")
+                    if (servs != null) {
+                        val ids = mutableListOf<Long>()
+                        for (j in 0 until servs.length()) {
+                            ids.add(servs.optLong(j))
+                        }
+                        ids.toString()
+                    } else "[]"
+                }
+                else -> "[]"
+            }
+            
             database.citaDao().insert(
                 Cita(
-                    id = obj.getLong("id"),
-                    clienteId = obj.getLong("clienteId"),
-                    perroId = obj.getLong("perroId"),
-                    fecha = obj.getLong("fecha"),
-                    hora = obj.getString("hora"),
-                    serviciosIds = obj.optString("serviciosIds", "[]"),
-                    precioTotal = obj.getDouble("precioTotal"),
-                    estado = obj.getString("estado"),
+                    id = obj.optLong("id", System.currentTimeMillis() + i),
+                    clienteId = obj.optLong("clienteId", 0),
+                    perroId = obj.optLong("perroId", 0),
+                    fecha = fechaLong,
+                    hora = obj.optString("hora", "10:00"),
+                    serviciosIds = serviciosIds,
+                    precioTotal = obj.optDouble("precioTotal", obj.optDouble("precio", 0.0)),
+                    estado = obj.optString("estado", "pendiente"),
                     notas = obj.optString("notas", ""),
                     googleEventId = obj.optString("googleEventId").takeIf { it.isNotEmpty() },
                     fechaCreacion = obj.optLong("fechaCreacion", System.currentTimeMillis())

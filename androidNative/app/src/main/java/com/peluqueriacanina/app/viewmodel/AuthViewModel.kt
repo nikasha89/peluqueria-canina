@@ -34,7 +34,8 @@ class AuthViewModel : ViewModel() {
         
         private val CALENDAR_SCOPE = Scope("https://www.googleapis.com/auth/calendar")
         private val CALENDAR_EVENTS_SCOPE = Scope("https://www.googleapis.com/auth/calendar.events")
-        private val DRIVE_FILE_SCOPE = Scope("https://www.googleapis.com/auth/drive.file")
+        // Use full drive scope to access files created by webapp
+        private val DRIVE_SCOPE = Scope("https://www.googleapis.com/auth/drive")
     }
     
     fun getSignInOptions(): GoogleSignInOptions {
@@ -42,7 +43,7 @@ class AuthViewModel : ViewModel() {
             .requestEmail()
             .requestProfile()
             .requestIdToken(WEB_CLIENT_ID)
-            .requestScopes(CALENDAR_SCOPE, CALENDAR_EVENTS_SCOPE, DRIVE_FILE_SCOPE)
+            .requestScopes(CALENDAR_SCOPE, CALENDAR_EVENTS_SCOPE, DRIVE_SCOPE)
             .build()
     }
     

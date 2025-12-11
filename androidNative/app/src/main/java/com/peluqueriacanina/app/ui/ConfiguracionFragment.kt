@@ -310,33 +310,58 @@ class ConfiguracionFragment : Fragment() {
     private fun checkAndOfferRestore() {
         val service = driveBackupService ?: return
         
+        setLoading(true)
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val hasBackup = service.hasBackup()
                 if (hasBackup) {
-                    val backupInfo = service.getBackupInfo()
-                    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                    val dateStr = if (backupInfo != null) {
-                        dateFormat.format(Date(backupInfo.modifiedTime))
-                    } else {
-                        "fecha desconocida"
-                    }
-
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("Backup encontrado")
-                        .setMessage("Se encontró un backup en Google Drive del $dateStr.\n\n¿Deseas restaurar los datos?")
-                        .setPositiveButton("Restaurar") { _, _ ->
-                            restoreBackup()
+                    // Backup found - restore automatically
+                    android.util.Log.d("ConfiguracionFragment", "Backup found, restoring automatically...")
+                    val result = service.restoreBackup()
+                    setLoading(false)
+                    
+                    result.fold(
+                        onSuccess = {
+                            val backupInfo = service.getBackupInfo()
+                            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                            val dateStr = if (backupInfo != null) {
+                                dateFormat.format(Date(backupInfo.modifiedTime))
+                            } else {
+                                ""
+                            }
+                            Toast.makeText(context, "✓ Datos restaurados del $dateStr", Toast.LENGTH_LONG).show()
+                        },
+                        onFailure = { error ->
+                            if (error is UserRecoverableAuthIOException) {
+                                // Need additional consent for Drive
+                                pendingAction = PendingAction.CHECK_BACKUP
+                                googleConsentLauncher.launch(error.intent)
+                            } else {
+                                Toast.makeText(context, "Error al restaurar: ${error.message}", Toast.LENGTH_LONG).show()
+                                android.util.Log.e("ConfiguracionFragment", "Auto-restore failed", error)
+                            }
                         }
-                        .setNegativeButton("No, gracias", null)
+                    )
+                } else {
+                    // No backup found - ask if user wants to create one
+                    setLoading(false)
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Sin backup")
+                        .setMessage("No se encontró ningún backup en Google Drive.\n\n¿Deseas crear uno ahora con los datos actuales?")
+                        .setPositiveButton("Crear backup") { _, _ ->
+                            createBackup()
+                        }
+                        .setNegativeButton("Más tarde", null)
                         .show()
                 }
                 updateBackupInfo()
             } catch (e: UserRecoverableAuthIOException) {
+                setLoading(false)
                 // Need additional consent for Drive
                 pendingAction = PendingAction.CHECK_BACKUP
                 googleConsentLauncher.launch(e.intent)
             } catch (e: Exception) {
+                setLoading(false)
                 android.util.Log.e("ConfiguracionFragment", "Error checking backup", e)
             }
         }
