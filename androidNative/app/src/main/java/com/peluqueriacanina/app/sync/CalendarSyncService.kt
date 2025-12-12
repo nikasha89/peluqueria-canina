@@ -9,6 +9,7 @@ import com.google.api.client.util.DateTime
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.CalendarScopes
 import com.google.api.services.calendar.model.Event
+import com.google.api.services.calendar.model.EventAttendee
 import com.google.api.services.calendar.model.EventDateTime
 import com.peluqueriacanina.app.PeluqueriaApp
 import com.peluqueriacanina.app.data.AppDatabase
@@ -66,6 +67,7 @@ class CalendarSyncService(
                     
                     val eventTitle = buildEventTitle(perro?.nombre, cliente?.nombre)
                     val eventDescription = buildEventDescription(cita, perro?.nombre, cliente?.telefono)
+                    val clienteEmail = cliente?.email?.takeIf { it.isNotEmpty() }
 
                     if (cita.googleEventId != null) {
                         // Update existing event
@@ -73,7 +75,7 @@ class CalendarSyncService(
                         if (success) updated++ else errors++
                     } else {
                         // Create new event
-                        val eventId = createCalendarEvent(cita, eventTitle, eventDescription)
+                        val eventId = createCalendarEvent(cita, eventTitle, eventDescription, clienteEmail)
                         if (eventId != null) {
                             // Save the Google Event ID back to the database
                             database.citaDao().update(cita.copy(googleEventId = eventId))
@@ -105,8 +107,9 @@ class CalendarSyncService(
             
             val eventTitle = buildEventTitle(perro?.nombre, cliente?.nombre)
             val eventDescription = buildEventDescription(cita, perro?.nombre, cliente?.telefono)
+            val clienteEmail = cliente?.email?.takeIf { it.isNotEmpty() }
 
-            val eventId = createCalendarEvent(cita, eventTitle, eventDescription)
+            val eventId = createCalendarEvent(cita, eventTitle, eventDescription, clienteEmail)
             if (eventId != null) {
                 // Update cita with the event ID
                 database.citaDao().update(cita.copy(googleEventId = eventId))
@@ -135,7 +138,7 @@ class CalendarSyncService(
         }
     }
 
-    private fun createCalendarEvent(cita: Cita, title: String, description: String): String? {
+    private fun createCalendarEvent(cita: Cita, title: String, description: String, attendeeEmail: String? = null): String? {
         val event = Event().apply {
             summary = title
             this.description = description
@@ -152,6 +155,15 @@ class CalendarSyncService(
             end = EventDateTime().apply {
                 dateTime = endDateTime
                 timeZone = TimeZone.getDefault().id
+            }
+            
+            // Añadir invitado si tiene email
+            if (!attendeeEmail.isNullOrEmpty()) {
+                attendees = listOf(
+                    EventAttendee().apply {
+                        email = attendeeEmail
+                    }
+                )
             }
         }
 

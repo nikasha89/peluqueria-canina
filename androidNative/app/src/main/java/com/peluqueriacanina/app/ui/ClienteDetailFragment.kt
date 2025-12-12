@@ -1,12 +1,16 @@
 package com.peluqueriacanina.app.ui
 
+import android.Manifest
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.pm.PackageManager
+import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
@@ -21,6 +25,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
@@ -50,21 +55,41 @@ class ClienteDetailFragment : DialogFragment() {
         uri?.let { handleImageSelected(it) }
     }
     
+    // Para selección de contacto
+    private val pickContactLauncher = registerForActivityResult(ActivityResultContracts.PickContact()) { uri: Uri? ->
+        uri?.let { handleContactSelected(it) }
+    }
+    
+    // Para solicitar permiso de contactos
+    private val requestContactPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            pickContactLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Se necesita permiso para acceder a los contactos", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
     private lateinit var inputNombre: TextInputEditText
     private lateinit var inputTelefono: TextInputEditText
     private lateinit var inputNotas: TextInputEditText
     private lateinit var layoutPerros: LinearLayout
     private lateinit var txtNoPerros: TextView
+    private lateinit var btnVincularContacto: MaterialButton
 
     companion object {
         private const val ARG_CLIENTE_ID = "cliente_id"
         
-        fun newInstance(clienteId: Long): ClienteDetailFragment {
+        fun newInstance(clienteId: Long = 0): ClienteDetailFragment {
             return ClienteDetailFragment().apply {
                 arguments = Bundle().apply {
                     putLong(ARG_CLIENTE_ID, clienteId)
                 }
             }
+        }
+        
+        // Para crear un nuevo cliente
+        fun newInstanceForCreate(): ClienteDetailFragment {
+            return newInstance(0)
         }
     }
 
@@ -90,6 +115,7 @@ class ClienteDetailFragment : DialogFragment() {
         inputNotas = view.findViewById(R.id.inputNotas)
         layoutPerros = view.findViewById(R.id.layoutPerros)
         txtNoPerros = view.findViewById(R.id.txtNoPerros)
+        btnVincularContacto = view.findViewById(R.id.btnVincularContacto)
         val btnGuardar = view.findViewById<MaterialButton>(R.id.btnGuardarCliente)
         val btnEliminar = view.findViewById<MaterialButton>(R.id.btnEliminarCliente)
         val btnAddPerro = view.findViewById<MaterialButton>(R.id.btnAddPerro)
@@ -98,69 +124,133 @@ class ClienteDetailFragment : DialogFragment() {
         toolbar.setNavigationOnClickListener {
             dismiss()
         }
+        
+        // Vincular contacto
+        btnVincularContacto.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) 
+                == PackageManager.PERMISSION_GRANTED) {
+                pickContactLauncher.launch(null)
+            } else {
+                requestContactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+            }
+        }
 
         // Cargar razas
         clienteViewModel.allRazas.observe(viewLifecycleOwner) { razas ->
             razasList = razas
         }
 
-        // Cargar cliente
-        val clienteId = arguments?.getLong(ARG_CLIENTE_ID) ?: return
+        // Cargar cliente o modo creación
+        val clienteId = arguments?.getLong(ARG_CLIENTE_ID) ?: 0L
+        val isCreateMode = clienteId == 0L
         
-        clienteViewModel.allClientes.observe(viewLifecycleOwner) { clientes ->
-            cliente = clientes.find { it.id == clienteId }
-            cliente?.let { c ->
-                toolbar.title = c.nombre
-                inputNombre.setText(c.nombre)
-                inputTelefono.setText(c.telefono)
-                inputNotas.setText(c.notas)
-            }
-        }
+        if (isCreateMode) {
+            // Modo creación
+            toolbar.title = "Nuevo Cliente"
+            btnEliminar.visibility = View.GONE
+            btnAddPerro.visibility = View.GONE // No se pueden añadir perros hasta guardar
+            txtNoPerros.text = "Guarda el cliente primero para añadir perros"
+            
+            btnGuardar.text = "Crear Cliente"
+            btnGuardar.setOnClickListener {
+                val nombre = inputNombre.text.toString().trim()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
 
-        // Cargar perros
-        clienteViewModel.getPerrosForCliente(clienteId).observe(viewLifecycleOwner) { perrosList ->
-            perros = perrosList
-            updatePerrosUI()
-        }
-
-        // Guardar cambios cliente
-        btnGuardar.setOnClickListener {
-            val nombre = inputNombre.text.toString().trim()
-            if (nombre.isEmpty()) {
-                Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            cliente?.let { c ->
-                val updated = c.copy(
+                val nuevoCliente = Cliente(
                     nombre = nombre,
                     telefono = inputTelefono.text.toString().trim(),
                     notas = inputNotas.text.toString().trim()
                 )
-                clienteViewModel.updateCliente(updated)
-                Toast.makeText(context, "Cliente actualizado", Toast.LENGTH_SHORT).show()
+                clienteViewModel.insertCliente(nuevoCliente) { newId ->
+                    // Cerrar este diálogo y abrir el de edición con el nuevo cliente
+                    dismiss()
+                    val editFragment = newInstance(newId)
+                    editFragment.show(parentFragmentManager, "cliente_detail")
+                }
+                Toast.makeText(context, "Cliente creado", Toast.LENGTH_SHORT).show()
             }
-        }
-
-        // Eliminar cliente
-        btnEliminar.setOnClickListener {
-            AlertDialog.Builder(requireContext())
-                .setTitle("Eliminar cliente")
-                .setMessage("¿Estás seguro de que quieres eliminar a ${cliente?.nombre}? Se eliminarán también todos sus perros.")
-                .setPositiveButton("Eliminar") { _, _ ->
-                    cliente?.let { c ->
-                        clienteViewModel.deleteCliente(c)
-                        Toast.makeText(context, "Cliente eliminado", Toast.LENGTH_SHORT).show()
-                        dismiss()
+        } else {
+            // Modo edición
+            clienteViewModel.allClientes.observe(viewLifecycleOwner) { clientes ->
+                cliente = clientes.find { it.id == clienteId }
+                cliente?.let { c ->
+                    toolbar.title = c.nombre
+                    inputNombre.setText(c.nombre)
+                    inputTelefono.setText(c.telefono)
+                    inputNotas.setText(c.notas)
+                    
+                    // Mostrar si está vinculado a un contacto
+                    if (!c.contactUri.isNullOrEmpty()) {
+                        try {
+                            val contactUri = Uri.parse(c.contactUri)
+                            val cursor = requireContext().contentResolver.query(
+                                contactUri,
+                                arrayOf(ContactsContract.Contacts.DISPLAY_NAME),
+                                null, null, null
+                            )
+                            cursor?.use {
+                                if (it.moveToFirst()) {
+                                    val name = it.getString(it.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                                    btnVincularContacto.text = "📇 Vinculado: $name"
+                                }
+                            }
+                        } catch (e: Exception) {
+                            btnVincularContacto.text = "📇 Vincular con contacto"
+                        }
+                    } else {
+                        btnVincularContacto.text = "📇 Vincular con contacto"
                     }
                 }
-                .setNegativeButton("Cancelar", null)
-                .show()
-        }
+            }
 
-        // Añadir perro
-        btnAddPerro.setOnClickListener {
-            showAddPerroDialog()
+            // Cargar perros
+            clienteViewModel.getPerrosForCliente(clienteId).observe(viewLifecycleOwner) { perrosList ->
+                perros = perrosList
+                updatePerrosUI()
+            }
+
+            // Guardar cambios cliente
+            btnGuardar.setOnClickListener {
+                val nombre = inputNombre.text.toString().trim()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                cliente?.let { c ->
+                    val updated = c.copy(
+                        nombre = nombre,
+                        telefono = inputTelefono.text.toString().trim(),
+                        notas = inputNotas.text.toString().trim()
+                    )
+                    clienteViewModel.updateCliente(updated)
+                    Toast.makeText(context, "Cliente actualizado", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            // Eliminar cliente
+            btnEliminar.setOnClickListener {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Eliminar cliente")
+                    .setMessage("¿Estás seguro de que quieres eliminar a ${cliente?.nombre}? Se eliminarán también todos sus perros.")
+                    .setPositiveButton("Eliminar") { _, _ ->
+                        cliente?.let { c ->
+                            clienteViewModel.deleteCliente(c)
+                            Toast.makeText(context, "Cliente eliminado", Toast.LENGTH_SHORT).show()
+                            dismiss()
+                        }
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+            }
+
+            // Añadir perro
+            btnAddPerro.setOnClickListener {
+                showAddPerroDialog()
+            }
         }
     }
 
@@ -424,5 +514,85 @@ class ClienteDetailFragment : DialogFragment() {
             }
             .setNegativeButton("Cancelar", null)
             .show()
+    }
+    
+    private fun handleContactSelected(contactUri: Uri) {
+        try {
+            val contentResolver = requireContext().contentResolver
+            
+            // Obtener el ID del contacto
+            val contactCursor = contentResolver.query(
+                contactUri,
+                arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.DISPLAY_NAME),
+                null, null, null
+            )
+            
+            contactCursor?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val contactId = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID))
+                    val contactName = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                    
+                    var phoneNumber: String? = null
+                    var emailAddress: String? = null
+                    
+                    // Buscar el teléfono del contacto
+                    val phoneCursor = contentResolver.query(
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                        "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                        arrayOf(contactId),
+                        null
+                    )
+                    phoneCursor?.use { phones ->
+                        if (phones.moveToFirst()) {
+                            phoneNumber = phones.getString(phones.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                        }
+                    }
+                    
+                    // Buscar el email del contacto (opcional, para invitaciones de calendario)
+                    val emailCursor = contentResolver.query(
+                        ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                        arrayOf(ContactsContract.CommonDataKinds.Email.ADDRESS),
+                        "${ContactsContract.CommonDataKinds.Email.CONTACT_ID} = ?",
+                        arrayOf(contactId),
+                        null
+                    )
+                    emailCursor?.use { emails ->
+                        if (emails.moveToFirst()) {
+                            emailAddress = emails.getString(emails.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.ADDRESS))
+                        }
+                    }
+                    
+                    if (phoneNumber != null) {
+                        // Actualizar el campo de teléfono
+                        inputTelefono.setText(phoneNumber)
+                        
+                        // Actualizar el botón para mostrar que está vinculado
+                        btnVincularContacto.text = "📇 Vinculado: $contactName"
+                        
+                        // Guardar la URI del contacto y email en el cliente
+                        cliente?.let { c ->
+                            val updated = c.copy(
+                                telefono = phoneNumber!!,
+                                email = emailAddress ?: c.email,
+                                contactUri = contactUri.toString()
+                            )
+                            clienteViewModel.updateCliente(updated)
+                        }
+                        
+                        val mensaje = if (emailAddress != null) {
+                            "Contacto vinculado: $contactName (se añadirá como invitado a las citas)"
+                        } else {
+                            "Contacto vinculado: $contactName"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "El contacto no tiene teléfono", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error al leer el contacto", Toast.LENGTH_SHORT).show()
+        }
     }
 }

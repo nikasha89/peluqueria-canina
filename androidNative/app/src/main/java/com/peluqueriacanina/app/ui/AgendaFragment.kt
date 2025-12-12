@@ -28,7 +28,8 @@ class AgendaFragment : Fragment() {
     private lateinit var adapter: CitaConDetallesAdapter
     private lateinit var emptyState: View
     private lateinit var txtCitasHoy: TextView
-    private lateinit var txtIngresosHoy: TextView
+    private lateinit var txtIngresosCompletadas: TextView
+    private lateinit var txtIngresosPendientes: TextView
     private lateinit var chipTodas: Chip
     private lateinit var chipHoy: Chip
     private lateinit var chipSemana: Chip
@@ -50,7 +51,8 @@ class AgendaFragment : Fragment() {
         recyclerView = view.findViewById(R.id.recyclerCitas)
         emptyState = view.findViewById(R.id.emptyState)
         txtCitasHoy = view.findViewById(R.id.txtCitasHoy)
-        txtIngresosHoy = view.findViewById(R.id.txtIngresosHoy)
+        txtIngresosCompletadas = view.findViewById(R.id.txtIngresosCompletadas)
+        txtIngresosPendientes = view.findViewById(R.id.txtIngresosPendientes)
         chipTodas = view.findViewById(R.id.chipTodas)
         chipHoy = view.findViewById(R.id.chipHoy)
         chipSemana = view.findViewById(R.id.chipSemana)
@@ -145,8 +147,12 @@ class AgendaFragment : Fragment() {
     
     private fun updateStats(citas: List<Cita>) {
         txtCitasHoy.text = citas.size.toString()
-        val ingresos = citas.sumOf { it.precioTotal }
-        txtIngresosHoy.text = String.format("%.2f€", ingresos)
+        
+        val ingresosCompletadas = citas.filter { it.estado == "completada" }.sumOf { it.precioTotal }
+        val ingresosPendientes = citas.filter { it.estado == "pendiente" }.sumOf { it.precioTotal }
+        
+        txtIngresosCompletadas.text = String.format("%.2f€", ingresosCompletadas)
+        txtIngresosPendientes.text = String.format("%.2f€", ingresosPendientes)
     }
 
     private fun showQuickActions(citaConDetalles: CitaConDetalles) {

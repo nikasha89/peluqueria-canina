@@ -11,6 +11,7 @@ data class Cliente(
     val telefono: String,
     val email: String = "",
     val notas: String = "",
+    val contactUri: String? = null, // URI del contacto vinculado
     val fechaCreacion: Long = System.currentTimeMillis()
 )
 

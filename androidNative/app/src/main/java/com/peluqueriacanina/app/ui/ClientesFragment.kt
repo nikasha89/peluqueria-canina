@@ -1,6 +1,8 @@
 package com.peluqueriacanina.app.ui
 
 import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -70,8 +72,15 @@ class ClientesFragment : Fragment() {
                 detailFragment.show(parentFragmentManager, "cliente_detail")
             },
             onCallClick = { cliente ->
-                // Handle call - could open dialer
-                Toast.makeText(context, "Llamando a ${cliente.telefono}", Toast.LENGTH_SHORT).show()
+                // Abrir marcador de teléfono
+                if (cliente.telefono.isNotEmpty()) {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = Uri.parse("tel:${cliente.telefono}")
+                    }
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(context, "El cliente no tiene teléfono", Toast.LENGTH_SHORT).show()
+                }
             }
         )
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -97,7 +106,9 @@ class ClientesFragment : Fragment() {
         }
 
         fab.setOnClickListener {
-            showAddClienteDialog()
+            // Abrir pantalla de creación de cliente
+            val createFragment = ClienteDetailFragment.newInstanceForCreate()
+            createFragment.show(parentFragmentManager, "cliente_create")
         }
     }
 

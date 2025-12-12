@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
         Tamano::class,
         LongitudPelo::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -74,6 +74,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
         
+        // Migration from version 4 to 5: add contactUri column to clientes
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE clientes ADD COLUMN contactUri TEXT")
+            }
+        }
+        
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -81,7 +88,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "peluqueria_canina_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance

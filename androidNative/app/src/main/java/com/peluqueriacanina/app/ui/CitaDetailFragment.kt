@@ -1,6 +1,8 @@
 package com.peluqueriacanina.app.ui
 
 import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -121,6 +123,18 @@ class CitaDetailFragment : DialogFragment() {
 
                     txtClienteNombre.text = cliente?.nombre ?: "Cliente desconocido"
                     txtClienteTelefono.text = "📞 ${cliente?.telefono ?: "Sin teléfono"}"
+                    
+                    // Hacer clickable para llamar
+                    val telefono = cliente?.telefono
+                    if (!telefono.isNullOrEmpty()) {
+                        txtClienteTelefono.setOnClickListener {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
+                                data = Uri.parse("tel:$telefono")
+                            }
+                            startActivity(intent)
+                        }
+                        txtClienteTelefono.setTextColor(requireContext().getColor(android.R.color.holo_blue_dark))
+                    }
 
                     txtPerroNombre.text = perro?.nombre ?: "Perro desconocido"
                     val perroDetails = listOfNotNull(
