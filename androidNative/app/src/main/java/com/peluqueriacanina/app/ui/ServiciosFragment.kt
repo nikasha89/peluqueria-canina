@@ -56,7 +56,9 @@ class ServiciosFragment : Fragment() {
 
         adapter = ServicioAdapter(
             onServicioClick = { servicio ->
-                showEditServicioDialog(servicio)
+                // Abrir pantalla completa de detalle
+                val detailFragment = ServicioDetailFragment.newInstance(servicio.id)
+                detailFragment.show(parentFragmentManager, "servicio_detail")
             }
         )
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -64,6 +66,12 @@ class ServiciosFragment : Fragment() {
 
         servicioViewModel.allServicios.observe(viewLifecycleOwner) { servicios ->
             adapter.submitList(servicios)
+        }
+        
+        // Observar precios para mostrar en la lista
+        servicioViewModel.allPrecios.observe(viewLifecycleOwner) { precios ->
+            val preciosMap = precios.groupBy { it.servicioId }
+            adapter.setPreciosMap(preciosMap)
         }
 
         fab.setOnClickListener {
@@ -264,10 +272,10 @@ class ServiciosFragment : Fragment() {
             layoutPrecioVariable.visibility = View.VISIBLE
             
             // Load existing combinations
-            servicioViewModel.getPreciosForServicio(servicio.id).observe(viewLifecycleOwner) { precios ->
+            servicioViewModel.getPreciosForServicioLive(servicio.id).observe(viewLifecycleOwner) { precios ->
                 combinaciones.clear()
                 precios.forEach { precio ->
-                    combinaciones.add(CombinacionPrecio(precio.raza ?: "", precio.tamano, precio.longitudPelo, precio.precio))
+                    combinaciones.add(CombinacionPrecio("", precio.tamano, precio.longitudPelo, precio.precio))
                 }
                 updateCombinacionesUI(layoutCombinaciones, txtCombinacionesLabel)
             }

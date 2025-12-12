@@ -13,6 +13,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
@@ -20,10 +21,12 @@ import com.peluqueriacanina.app.R
 import com.peluqueriacanina.app.data.Cita
 import com.peluqueriacanina.app.data.Cliente
 import com.peluqueriacanina.app.data.Perro
+import com.peluqueriacanina.app.data.PrecioServicio
 import com.peluqueriacanina.app.data.Servicio
 import com.peluqueriacanina.app.viewmodel.CitaViewModel
 import com.peluqueriacanina.app.viewmodel.ClienteViewModel
 import com.peluqueriacanina.app.viewmodel.ServicioViewModel
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -47,12 +50,16 @@ class CitasFragment : Fragment() {
     private var clientes: List<Cliente> = emptyList()
     private var perros: List<Perro> = emptyList()
     private var servicios: List<Servicio> = emptyList()
+    private var allPrecios: List<PrecioServicio> = emptyList()
     private var selectedCliente: Cliente? = null
     private var selectedPerro: Perro? = null
     private var selectedFechaTimestamp: Long? = null
     private var selectedHora: String? = null
     private var selectedHourOfDay: Int = 10
     private var selectedMinuteOfHour: Int = 0
+    
+    // Map para cachear precios calculados por servicio
+    private val preciosCalculados = mutableMapOf<Long, Double>()
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private val storageDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -146,7 +153,42 @@ class CitasFragment : Fragment() {
                 
                 spinnerPerro.setOnItemClickListener { _, _, position, _ ->
                     selectedPerro = perros[position]
+                    // Recalcular precios de servicios para este perro
+                    recalcularPreciosServicios()
                 }
+            }
+        }
+    }
+    
+    private fun recalcularPreciosServicios() {
+        val perro = selectedPerro ?: return
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            preciosCalculados.clear()
+            
+            servicios.forEach { servicio ->
+                val precio = servicioViewModel.calcularPrecioParaPerro(
+                    servicioId = servicio.id,
+                    raza = perro.raza,
+                    tamano = perro.tamano,
+                    longitudPelo = perro.longitudPelo
+                )
+                preciosCalculados[servicio.id] = precio
+            }
+            
+            // Actualizar chips con los nuevos precios
+            updateChipsConPrecios()
+            updatePrecioTotal()
+        }
+    }
+    
+    private fun updateChipsConPrecios() {
+        for (i in 0 until chipGroupServicios.childCount) {
+            val chip = chipGroupServicios.getChildAt(i) as? Chip
+            val servicio = chip?.tag as? Servicio
+            if (servicio != null) {
+                val precio = preciosCalculados[servicio.id] ?: servicio.precioBase
+                chip.text = "${servicio.nombre} - ${String.format("%.2f", precio)}€"
             }
         }
     }
@@ -157,8 +199,13 @@ class CitasFragment : Fragment() {
             chipGroupServicios.removeAllViews()
             
             servicios.forEach { servicio ->
+                val precioTexto = if (servicio.tipoPrecio == "fijo") {
+                    "${servicio.precioBase}€"
+                } else {
+                    "Variable"
+                }
                 val chip = Chip(requireContext()).apply {
-                    text = "${servicio.nombre} - ${servicio.precioBase}€"
+                    text = "${servicio.nombre} - $precioTexto"
                     isCheckable = true
                     tag = servicio
                     setOnCheckedChangeListener { _, _ ->
@@ -166,6 +213,11 @@ class CitasFragment : Fragment() {
                     }
                 }
                 chipGroupServicios.addView(chip)
+            }
+            
+            // Si ya hay perro seleccionado, recalcular precios
+            if (selectedPerro != null) {
+                recalcularPreciosServicios()
             }
         }
     }
@@ -182,7 +234,21 @@ class CitasFragment : Fragment() {
     }
 
     private fun updatePrecioTotal() {
-        val total = getSelectedServicios().sumOf { it.precioBase }
+        val serviciosSeleccionados = getSelectedServicios()
+        var total = 0.0
+        
+        serviciosSeleccionados.forEach { servicio ->
+            // Si tenemos precio calculado para este perro, usarlo
+            val precio = if (selectedPerro != null && preciosCalculados.containsKey(servicio.id)) {
+                preciosCalculados[servicio.id] ?: 0.0
+            } else if (servicio.tipoPrecio == "fijo") {
+                servicio.precioBase
+            } else {
+                0.0 // Variable sin perro seleccionado
+            }
+            total += precio
+        }
+        
         txtPrecioTotal.text = String.format("%.2f €", total)
     }
 
@@ -213,7 +279,19 @@ class CitasFragment : Fragment() {
         // Convert servicios list to JSON string
         val serviciosIds = serviciosSeleccionados.map { it.id }
         val serviciosJson = JSONArray(serviciosIds).toString()
-        val precioTotal = serviciosSeleccionados.sumOf { it.precioBase }
+        
+        // Calcular precio total usando los precios calculados para el perro
+        var precioTotal = 0.0
+        serviciosSeleccionados.forEach { servicio ->
+            val precio = if (preciosCalculados.containsKey(servicio.id)) {
+                preciosCalculados[servicio.id] ?: 0.0
+            } else if (servicio.tipoPrecio == "fijo") {
+                servicio.precioBase
+            } else {
+                0.0
+            }
+            precioTotal += precio
+        }
 
         val cita = Cita(
             clienteId = selectedCliente!!.id,
@@ -249,5 +327,21 @@ class CitasFragment : Fragment() {
         selectedPerro = null
         selectedFechaTimestamp = null
         selectedHora = null
+        preciosCalculados.clear()
+        
+        // Restaurar texto de chips a "Variable" para servicios variables
+        servicios.forEach { servicio ->
+            val precioTexto = if (servicio.tipoPrecio == "fijo") {
+                "${servicio.precioBase}€"
+            } else {
+                "Variable"
+            }
+            for (i in 0 until chipGroupServicios.childCount) {
+                val chip = chipGroupServicios.getChildAt(i) as? Chip
+                if ((chip?.tag as? Servicio)?.id == servicio.id) {
+                    chip.text = "${servicio.nombre} - $precioTexto"
+                }
+            }
+        }
     }
 }

@@ -34,7 +34,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Citas Hoy"
+                    android:text="Citas"
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -72,7 +72,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Ingresos Hoy"
+                    android:text="Ingresos"
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 

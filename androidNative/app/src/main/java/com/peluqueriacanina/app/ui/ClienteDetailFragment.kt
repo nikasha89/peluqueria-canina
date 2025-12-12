@@ -2,7 +2,12 @@ package com.peluqueriacanina.app.ui
 
 import android.app.AlertDialog
 import android.app.Dialog
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,10 +15,13 @@ import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import com.google.android.material.appbar.MaterialToolbar
@@ -24,6 +32,7 @@ import com.peluqueriacanina.app.data.Cliente
 import com.peluqueriacanina.app.data.Perro
 import com.peluqueriacanina.app.data.Raza
 import com.peluqueriacanina.app.viewmodel.ClienteViewModel
+import java.io.ByteArrayOutputStream
 
 class ClienteDetailFragment : DialogFragment() {
 
@@ -32,6 +41,14 @@ class ClienteDetailFragment : DialogFragment() {
     private var cliente: Cliente? = null
     private var perros: List<Perro> = emptyList()
     private var razasList: List<Raza> = emptyList()
+    
+    // Para selección de foto
+    private var currentFotoBase64: String? = null
+    private var currentImgPreview: ImageView? = null
+    
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { handleImageSelected(it) }
+    }
     
     private lateinit var inputNombre: TextInputEditText
     private lateinit var inputTelefono: TextInputEditText
@@ -168,6 +185,21 @@ class ClienteDetailFragment : DialogFragment() {
             perroView.findViewById<TextView>(R.id.txtTamano).text = perro.tamano.replaceFirstChar { it.uppercase() }
             perroView.findViewById<TextView>(R.id.txtPelo).text = perro.longitudPelo.replaceFirstChar { it.uppercase() }
             perroView.findViewById<TextView>(R.id.txtEdad).text = perro.edad?.let { "$it años" } ?: "-"
+            
+            // Mostrar imagen del perro
+            val imgPerro = perroView.findViewById<ImageView>(R.id.imgPerro)
+            if (!perro.foto.isNullOrEmpty()) {
+                try {
+                    val imageBytes = Base64.decode(perro.foto, Base64.DEFAULT)
+                    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                    if (bitmap != null) {
+                        imgPerro.setImageBitmap(bitmap)
+                        imgPerro.setPadding(0, 0, 0, 0)
+                    }
+                } catch (e: Exception) {
+                    // Usar imagen por defecto
+                }
+            }
 
             // Botón editar
             perroView.findViewById<ImageButton>(R.id.btnEditPerro).setOnClickListener {
@@ -191,7 +223,73 @@ class ClienteDetailFragment : DialogFragment() {
         }
     }
 
+    private fun handleImageSelected(uri: Uri) {
+        try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            var bitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+            
+            if (bitmap != null) {
+                // Corregir orientación EXIF
+                bitmap = correctImageOrientation(uri, bitmap)
+                
+                // Comprimir la imagen a un tamaño manejable
+                val maxSize = 400
+                val ratio = minOf(maxSize.toFloat() / bitmap.width, maxSize.toFloat() / bitmap.height, 1f)
+                val width = (bitmap.width * ratio).toInt()
+                val height = (bitmap.height * ratio).toInt()
+                
+                val scaledBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
+                
+                val outputStream = ByteArrayOutputStream()
+                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+                val byteArray = outputStream.toByteArray()
+                
+                currentFotoBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                
+                // Mostrar preview
+                currentImgPreview?.setImageBitmap(scaledBitmap)
+                currentImgPreview?.visibility = View.VISIBLE
+                
+                if (bitmap != scaledBitmap) bitmap.recycle()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error al cargar la imagen", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun correctImageOrientation(uri: Uri, bitmap: Bitmap): Bitmap {
+        try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            inputStream?.use { stream ->
+                val exif = ExifInterface(stream)
+                val orientation = exif.getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )
+                
+                val rotation = when (orientation) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+                
+                if (rotation != 0f) {
+                    val matrix = Matrix()
+                    matrix.postRotate(rotation)
+                    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                }
+            }
+        } catch (e: Exception) {
+            // Ignorar errores de EXIF
+        }
+        return bitmap
+    }
+    
     private fun showAddPerroDialog() {
+        currentFotoBase64 = null
+        
         val dialogView = LayoutInflater.from(requireContext())
             .inflate(R.layout.dialog_add_perro, null)
 
@@ -200,6 +298,10 @@ class ClienteDetailFragment : DialogFragment() {
         val inputEdad = dialogView.findViewById<EditText>(R.id.inputEdadDialog)
         val spinnerTamano = dialogView.findViewById<Spinner>(R.id.spinnerTamanoDialog)
         val spinnerPelo = dialogView.findViewById<Spinner>(R.id.spinnerPeloDialog)
+        val btnSelectFoto = dialogView.findViewById<MaterialButton>(R.id.btnSelectFotoDialog)
+        val imgPreview = dialogView.findViewById<ImageView>(R.id.imgPreviewFotoDialog)
+        
+        currentImgPreview = imgPreview
 
         val razasNombres = razasList.map { it.nombre }
         val tamanos = listOf("mini", "pequeno", "mediano", "grande", "gigante")
@@ -211,6 +313,11 @@ class ClienteDetailFragment : DialogFragment() {
 
         spinnerTamano?.setSelection(2) // mediano
         spinnerPelo?.setSelection(1) // medio
+        
+        // Configurar botón de selección de foto
+        btnSelectFoto?.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
 
         AlertDialog.Builder(requireContext())
             .setTitle("Añadir perro")
@@ -228,7 +335,8 @@ class ClienteDetailFragment : DialogFragment() {
                     raza = spinnerRaza?.selectedItem?.toString() ?: "",
                     tamano = spinnerTamano?.selectedItem?.toString() ?: "mediano",
                     longitudPelo = spinnerPelo?.selectedItem?.toString() ?: "medio",
-                    edad = inputEdad.text.toString().toIntOrNull()
+                    edad = inputEdad.text.toString().toIntOrNull(),
+                    foto = currentFotoBase64
                 )
                 clienteViewModel.insertPerro(perro)
                 Toast.makeText(context, "Perro añadido", Toast.LENGTH_SHORT).show()
@@ -238,6 +346,8 @@ class ClienteDetailFragment : DialogFragment() {
     }
 
     private fun showEditPerroDialog(perro: Perro) {
+        currentFotoBase64 = perro.foto
+        
         val dialogView = LayoutInflater.from(requireContext())
             .inflate(R.layout.dialog_add_perro, null)
 
@@ -246,6 +356,10 @@ class ClienteDetailFragment : DialogFragment() {
         val inputEdad = dialogView.findViewById<EditText>(R.id.inputEdadDialog)
         val spinnerTamano = dialogView.findViewById<Spinner>(R.id.spinnerTamanoDialog)
         val spinnerPelo = dialogView.findViewById<Spinner>(R.id.spinnerPeloDialog)
+        val btnSelectFoto = dialogView.findViewById<MaterialButton>(R.id.btnSelectFotoDialog)
+        val imgPreview = dialogView.findViewById<ImageView>(R.id.imgPreviewFotoDialog)
+        
+        currentImgPreview = imgPreview
 
         val razasNombres = razasList.map { it.nombre }
         val tamanos = listOf("mini", "pequeno", "mediano", "grande", "gigante")
@@ -267,6 +381,25 @@ class ClienteDetailFragment : DialogFragment() {
         
         val peloIndex = pelos.indexOf(perro.longitudPelo)
         if (peloIndex >= 0) spinnerPelo?.setSelection(peloIndex)
+        
+        // Mostrar foto existente si la hay
+        if (!perro.foto.isNullOrEmpty()) {
+            try {
+                val imageBytes = Base64.decode(perro.foto, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap != null) {
+                    imgPreview?.setImageBitmap(bitmap)
+                    imgPreview?.visibility = View.VISIBLE
+                }
+            } catch (e: Exception) {
+                // Ignorar error de decodificación
+            }
+        }
+        
+        // Configurar botón de selección de foto
+        btnSelectFoto?.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
 
         AlertDialog.Builder(requireContext())
             .setTitle("Editar ${perro.nombre}")
@@ -283,7 +416,8 @@ class ClienteDetailFragment : DialogFragment() {
                     raza = spinnerRaza?.selectedItem?.toString() ?: perro.raza,
                     tamano = spinnerTamano?.selectedItem?.toString() ?: perro.tamano,
                     longitudPelo = spinnerPelo?.selectedItem?.toString() ?: perro.longitudPelo,
-                    edad = inputEdad.text.toString().toIntOrNull()
+                    edad = inputEdad.text.toString().toIntOrNull(),
+                    foto = currentFotoBase64
                 )
                 clienteViewModel.updatePerro(updated)
                 Toast.makeText(context, "Perro actualizado", Toast.LENGTH_SHORT).show()

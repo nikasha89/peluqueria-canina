@@ -89,11 +89,23 @@ interface PrecioServicioDao {
     @Query("SELECT * FROM precios_servicio WHERE servicioId = :servicioId")
     fun getPreciosByServicio(servicioId: Long): LiveData<List<PrecioServicio>>
     
+    @Query("SELECT * FROM precios_servicio WHERE servicioId = :servicioId")
+    suspend fun getPreciosByServicioSync(servicioId: Long): List<PrecioServicio>
+    
+    @Query("SELECT * FROM precios_servicio")
+    fun getAll(): LiveData<List<PrecioServicio>>
+    
     @Query("SELECT * FROM precios_servicio")
     suspend fun getAllSync(): List<PrecioServicio>
     
     @Query("SELECT * FROM precios_servicio WHERE servicioId = :servicioId AND tamano = :tamano AND longitudPelo = :longitudPelo")
     suspend fun getPrecio(servicioId: Long, tamano: String, longitudPelo: String): PrecioServicio?
+    
+    @Query("SELECT * FROM precios_servicio WHERE servicioId = :servicioId AND raza = :raza AND tamano = :tamano AND longitudPelo = :longitudPelo")
+    suspend fun getPrecioConRaza(servicioId: Long, raza: String, tamano: String, longitudPelo: String): PrecioServicio?
+    
+    @Query("SELECT * FROM precios_servicio WHERE servicioId = :servicioId AND raza IS NULL AND tamano = :tamano AND longitudPelo = :longitudPelo")
+    suspend fun getPrecioSinRaza(servicioId: Long, tamano: String, longitudPelo: String): PrecioServicio?
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(precio: PrecioServicio): Long
@@ -168,5 +180,53 @@ interface RazaDao {
     suspend fun getCount(): Int
     
     @Query("DELETE FROM razas")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface TamanoDao {
+    @Query("SELECT * FROM tamanos ORDER BY id ASC")
+    fun getAllTamanos(): LiveData<List<Tamano>>
+    
+    @Query("SELECT * FROM tamanos ORDER BY id ASC")
+    suspend fun getAllSync(): List<Tamano>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(tamano: Tamano): Long
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tamanos: List<Tamano>)
+    
+    @Update
+    suspend fun update(tamano: Tamano)
+    
+    @Delete
+    suspend fun delete(tamano: Tamano)
+    
+    @Query("DELETE FROM tamanos")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface LongitudPeloDao {
+    @Query("SELECT * FROM longitudes_pelo ORDER BY id ASC")
+    fun getAllLongitudesPelo(): LiveData<List<LongitudPelo>>
+    
+    @Query("SELECT * FROM longitudes_pelo ORDER BY id ASC")
+    suspend fun getAllSync(): List<LongitudPelo>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(longitudPelo: LongitudPelo): Long
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(longitudesPelo: List<LongitudPelo>)
+    
+    @Update
+    suspend fun update(longitudPelo: LongitudPelo)
+    
+    @Delete
+    suspend fun delete(longitudPelo: LongitudPelo)
+    
+    @Query("DELETE FROM longitudes_pelo")
     suspend fun deleteAll()
 }

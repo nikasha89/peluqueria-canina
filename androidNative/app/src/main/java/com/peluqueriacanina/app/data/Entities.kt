@@ -72,3 +72,17 @@ data class Raza(
     val id: Long = 0,
     val nombre: String
 )
+
+@Entity(tableName = "tamanos")
+data class Tamano(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val nombre: String
+)
+
+@Entity(tableName = "longitudes_pelo")
+data class LongitudPelo(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val nombre: String
+)

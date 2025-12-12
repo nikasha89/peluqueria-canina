@@ -256,23 +256,31 @@
                 android:layout_marginTop="8dp">
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEditar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="✏️ Editar"
+                    android:layout_marginEnd="8dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCompletar"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="✅ Completar"
-                    android:layout_marginEnd="8dp"
                     style="@style/Widget.MaterialComponents.Button" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCancelar"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="❌ Cancelar"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Cancelar cita"
+                android:layout_marginTop="8dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnEliminar"

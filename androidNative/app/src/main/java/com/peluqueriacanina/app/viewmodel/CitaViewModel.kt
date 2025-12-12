@@ -1,13 +1,16 @@
 package com.peluqueriacanina.app.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.peluqueriacanina.app.PeluqueriaApp
 import com.peluqueriacanina.app.data.*
 import com.peluqueriacanina.app.sync.AutoBackupManager
+import com.peluqueriacanina.app.sync.CalendarSyncService
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.util.Calendar
@@ -33,6 +36,10 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
     private val _citasConDetalles = MutableLiveData<List<CitaConDetalles>>()
     val citasConDetalles: LiveData<List<CitaConDetalles>> = _citasConDetalles
     
+    companion object {
+        private const val TAG = "CitaViewModel"
+    }
+    
     init {
         loadCitasHoy()
         loadCitasSemana()
@@ -40,6 +47,18 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
     
     private fun notifyDataChanged() {
         AutoBackupManager.notifyDataChanged(app)
+    }
+    
+    /**
+     * Obtiene el servicio de Calendar si el usuario está logueado
+     */
+    private fun getCalendarService(): CalendarSyncService? {
+        val account = GoogleSignIn.getLastSignedInAccount(app)
+        return if (account != null) {
+            CalendarSyncService(app, account)
+        } else {
+            null
+        }
     }
     
     fun loadCitasConDetalles(citas: List<Cita>) {
@@ -97,6 +116,20 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             loadCitasHoy()
             loadCitasSemana()
             notifyDataChanged()
+            
+            // Sincronizar con Google Calendar
+            val calendarService = getCalendarService()
+            if (calendarService != null) {
+                val insertedCita = cita.copy(id = id)
+                calendarService.createEventForCita(insertedCita)
+                    .onSuccess { eventId ->
+                        Log.d(TAG, "Evento de calendario creado: $eventId")
+                    }
+                    .onFailure { e ->
+                        Log.e(TAG, "Error al crear evento de calendario", e)
+                    }
+            }
+            
             onResult(id)
         }
     }
@@ -107,11 +140,42 @@ class CitaViewModel(application: Application) : AndroidViewModel(application) {
             loadCitasHoy()
             loadCitasSemana()
             notifyDataChanged()
+            
+            // Sincronizar con Google Calendar
+            val calendarService = getCalendarService()
+            if (calendarService != null) {
+                if (cita.googleEventId != null) {
+                    // Eliminar evento anterior y crear uno nuevo
+                    calendarService.deleteEventForCita(cita)
+                        .onFailure { e ->
+                            Log.e(TAG, "Error al eliminar evento anterior", e)
+                        }
+                }
+                calendarService.createEventForCita(cita)
+                    .onSuccess { eventId ->
+                        Log.d(TAG, "Evento de calendario actualizado: $eventId")
+                    }
+                    .onFailure { e ->
+                        Log.e(TAG, "Error al actualizar evento de calendario", e)
+                    }
+            }
         }
     }
     
     fun deleteCita(cita: Cita) {
         viewModelScope.launch {
+            // Eliminar de Google Calendar primero
+            val calendarService = getCalendarService()
+            if (calendarService != null && cita.googleEventId != null) {
+                calendarService.deleteEventForCita(cita)
+                    .onSuccess {
+                        Log.d(TAG, "Evento de calendario eliminado")
+                    }
+                    .onFailure { e ->
+                        Log.e(TAG, "Error al eliminar evento de calendario", e)
+                    }
+            }
+            
             citaDao.delete(cita)
             loadCitasHoy()
             loadCitasSemana()

@@ -90,26 +90,23 @@ class AgendaFragment : Fragment() {
 
         // Observe citas y cargar detalles
         citaViewModel.allCitas.observe(viewLifecycleOwner) { citas ->
-            when (currentFilter) {
-                "todas" -> citaViewModel.loadCitasConDetalles(citas)
-                else -> {} // Se maneja en los otros observers
+            if (currentFilter == "todas") {
+                citaViewModel.loadCitasConDetalles(citas)
+                updateStats(citas)
             }
         }
         
         citaViewModel.citasHoy.observe(viewLifecycleOwner) { citas ->
-            // Stats siempre de hoy
-            txtCitasHoy.text = citas.size.toString()
-            val ingresos = citas.sumOf { it.precioTotal }
-            txtIngresosHoy.text = "${ingresos}€"
-            
             if (currentFilter == "hoy") {
                 citaViewModel.loadCitasConDetalles(citas)
+                updateStats(citas)
             }
         }
         
         citaViewModel.citasSemana.observe(viewLifecycleOwner) { citas ->
             if (currentFilter == "semana") {
                 citaViewModel.loadCitasConDetalles(citas)
+                updateStats(citas)
             }
         }
         
@@ -131,10 +128,25 @@ class AgendaFragment : Fragment() {
         
         // Recargar según filtro
         when (selected) {
-            chipTodas -> citaViewModel.allCitas.value?.let { citaViewModel.loadCitasConDetalles(it) }
-            chipHoy -> citaViewModel.citasHoy.value?.let { citaViewModel.loadCitasConDetalles(it) }
-            chipSemana -> citaViewModel.citasSemana.value?.let { citaViewModel.loadCitasConDetalles(it) }
+            chipTodas -> citaViewModel.allCitas.value?.let { 
+                citaViewModel.loadCitasConDetalles(it)
+                updateStats(it)
+            }
+            chipHoy -> citaViewModel.citasHoy.value?.let { 
+                citaViewModel.loadCitasConDetalles(it)
+                updateStats(it)
+            }
+            chipSemana -> citaViewModel.citasSemana.value?.let { 
+                citaViewModel.loadCitasConDetalles(it)
+                updateStats(it)
+            }
         }
+    }
+    
+    private fun updateStats(citas: List<Cita>) {
+        txtCitasHoy.text = citas.size.toString()
+        val ingresos = citas.sumOf { it.precioTotal }
+        txtIngresosHoy.text = String.format("%.2f€", ingresos)
     }
 
     private fun showQuickActions(citaConDetalles: CitaConDetalles) {

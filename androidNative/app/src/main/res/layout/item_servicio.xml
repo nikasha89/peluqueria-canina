@@ -11,52 +11,95 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txtNombre"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Baño + Corte"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/txtDescripcion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Servicio completo de higiene"
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipTipoPrecio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Precio por tamaño"
+                    android:textSize="10sp"
+                    app:chipMinHeight="24dp"
+                    style="@style/Widget.Material3.Chip.Assist"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/txtNombre"
+                android:id="@+id/txtPrecio"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Baño + Corte"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/txtDescripcion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Servicio completo de higiene"
-                android:textSize="14sp"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipTipoPrecio"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Precio por tamaño"
-                android:textSize="10sp"
-                app:chipMinHeight="24dp"
-                style="@style/Widget.Material3.Chip.Assist"
-                android:layout_marginTop="4dp" />
+                android:text="35€"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary" />
 
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/txtPrecio"
-            android:layout_width="wrap_content"
+        <!-- Combinaciones de precios (para servicios variables) -->
+        <LinearLayout
+            android:id="@+id/layoutCombinacionesPreview"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="35€"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorPrimary" />
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp"
+            android:paddingTop="8dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/txtCombinacionesResumen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:lineSpacingExtra="2dp" />
+
+            <TextView
+                android:id="@+id/txtVerMas"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▼ Ver más"
+                android:textSize="12sp"
+                android:textColor="?attr/colorPrimary"
+                android:paddingTop="4dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

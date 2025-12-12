@@ -224,17 +224,21 @@ class DriveBackupService(
                 })
             }
             
+            // Para webapp: tipo "porRaza" si es variable, y usar "preciosCombinaciones"
+            val tipoWebapp = if (servicio.tipoPrecio == "variable") "porRaza" else "fijo"
+            
             serviciosArray.put(JSONObject().apply {
                 put("id", servicio.id)
                 put("nombre", servicio.nombre)
                 put("descripcion", servicio.descripcion)
-                put("tipoPrecio", servicio.tipoPrecio)
-                put("tipo", servicio.tipoPrecio)  // Alias para webapp
+                put("tipoPrecio", servicio.tipoPrecio)  // APK format
+                put("tipo", tipoWebapp)  // Webapp format: "porRaza" o "fijo"
                 put("precioBase", servicio.precioBase)
                 put("precio", servicio.precioBase)  // Alias para webapp
                 put("activo", servicio.activo)
                 if (combinacionesArray.length() > 0) {
-                    put("combinaciones", combinacionesArray)  // Webapp format
+                    put("combinaciones", combinacionesArray)  // APK format
+                    put("preciosCombinaciones", combinacionesArray)  // Webapp format
                 }
             })
         }
@@ -450,7 +454,13 @@ class DriveBackupService(
                 serviciosPorNombre[servicioNombre] = servicioId
             }
             
-            val combinaciones = obj.optJSONArray("combinaciones")
+            // Webapp usa "preciosCombinaciones", APK usa "combinaciones"
+            val combinaciones = obj.optJSONArray("preciosCombinaciones") 
+                ?: obj.optJSONArray("combinaciones")
+            
+            // Webapp usa "porRaza", APK usa "variable"
+            val tipo = obj.optString("tipo", obj.optString("tipoPrecio", "fijo"))
+            val esVariable = tipo == "porRaza" || tipo == "variable"
             
             if (combinaciones != null && combinaciones.length() > 0) {
                 val firstCombo = combinaciones.getJSONObject(0)
@@ -479,18 +489,22 @@ class DriveBackupService(
                         )
                     )
                 }
+                
+                android.util.Log.d("DriveBackupService", "Importado servicio variable: $servicioNombre con ${combinaciones.length()} combinaciones")
             } else {
-                // Formato webapp simple o APK
+                // Formato webapp simple o APK - servicio con precio fijo
                 database.servicioDao().insert(
                     Servicio(
                         id = servicioId,
                         nombre = servicioNombre,
                         descripcion = obj.optString("descripcion", ""),
-                        tipoPrecio = obj.optString("tipoPrecio", obj.optString("tipo", "fijo")),
+                        tipoPrecio = if (esVariable) "variable" else "fijo",
                         precioBase = obj.optDouble("precioBase", obj.optDouble("precio", 0.0)),
                         activo = obj.optBoolean("activo", true)
                     )
                 )
+                
+                android.util.Log.d("DriveBackupService", "Importado servicio fijo: $servicioNombre, precio=${obj.optDouble("precio", 0.0)}")
             }
         }
 

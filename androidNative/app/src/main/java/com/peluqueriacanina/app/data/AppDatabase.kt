@@ -17,9 +17,11 @@ import kotlinx.coroutines.launch
         Servicio::class,
         PrecioServicio::class,
         Cita::class,
-        Raza::class
+        Raza::class,
+        Tamano::class,
+        LongitudPelo::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +32,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun precioServicioDao(): PrecioServicioDao
     abstract fun citaDao(): CitaDao
     abstract fun razaDao(): RazaDao
+    abstract fun tamanoDao(): TamanoDao
+    abstract fun longitudPeloDao(): LongitudPeloDao
     
     companion object {
         @Volatile
@@ -49,6 +53,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
         
+        // Migration from version 3 to 4: add tamanos and longitudes_pelo tables
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS tamanos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        nombre TEXT NOT NULL
+                    )
+                """)
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS longitudes_pelo (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        nombre TEXT NOT NULL
+                    )
+                """)
+                // Insert default values
+                database.execSQL("INSERT INTO tamanos (nombre) VALUES ('mini'), ('pequeno'), ('mediano'), ('grande'), ('gigante')")
+                database.execSQL("INSERT INTO longitudes_pelo (nombre) VALUES ('corto'), ('medio'), ('largo')")
+            }
+        }
+        
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -56,7 +81,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "peluqueria_canina_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance
@@ -130,6 +155,24 @@ abstract class AppDatabase : RoomDatabase() {
                 Raza(nombre = "Otro")
             )
             database.razaDao().insertAll(razas)
+            
+            // Insert default sizes
+            val tamanos = listOf(
+                Tamano(nombre = "mini"),
+                Tamano(nombre = "pequeno"),
+                Tamano(nombre = "mediano"),
+                Tamano(nombre = "grande"),
+                Tamano(nombre = "gigante")
+            )
+            database.tamanoDao().insertAll(tamanos)
+            
+            // Insert default fur lengths
+            val pelos = listOf(
+                LongitudPelo(nombre = "corto"),
+                LongitudPelo(nombre = "medio"),
+                LongitudPelo(nombre = "largo")
+            )
+            database.longitudPeloDao().insertAll(pelos)
             
             // Insert default services
             val servicios = listOf(

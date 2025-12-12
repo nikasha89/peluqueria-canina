@@ -70,6 +70,7 @@ class CitaDetailFragment : DialogFragment() {
         val txtPerroInfo = view.findViewById<TextView>(R.id.txtPerroInfo)
         val layoutServicios = view.findViewById<LinearLayout>(R.id.layoutServicios)
         val txtNotas = view.findViewById<TextView>(R.id.txtNotas)
+        val btnEditar = view.findViewById<MaterialButton>(R.id.btnEditar)
         val btnCompletar = view.findViewById<MaterialButton>(R.id.btnCompletar)
         val btnCancelar = view.findViewById<MaterialButton>(R.id.btnCancelar)
         val btnEliminar = view.findViewById<MaterialButton>(R.id.btnEliminar)
@@ -163,12 +164,21 @@ class CitaDetailFragment : DialogFragment() {
                 }
 
                 // Actualizar botones según estado
+                btnEditar.isEnabled = c.estado == "pendiente"
                 btnCompletar.isEnabled = c.estado == "pendiente"
                 btnCancelar.isEnabled = c.estado == "pendiente"
             }
         }
 
         // Acciones
+        btnEditar.setOnClickListener {
+            cita?.let { c ->
+                dismiss() // Cerrar el detalle
+                val editFragment = CitaEditFragment.newInstance(c.id)
+                editFragment.show(parentFragmentManager, "cita_edit")
+            }
+        }
+
         btnCompletar.setOnClickListener {
             cita?.let { c ->
                 citaViewModel.completarCita(c)

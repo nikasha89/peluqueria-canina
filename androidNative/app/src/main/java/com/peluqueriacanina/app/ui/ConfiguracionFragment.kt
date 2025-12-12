@@ -8,7 +8,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -20,11 +23,16 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.common.api.ApiException
+import com.google.android.material.button.MaterialButton
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.peluqueriacanina.app.R
+import com.peluqueriacanina.app.data.LongitudPelo
+import com.peluqueriacanina.app.data.Raza
+import com.peluqueriacanina.app.data.Tamano
 import com.peluqueriacanina.app.sync.CalendarSyncService
 import com.peluqueriacanina.app.sync.DriveBackupService
 import com.peluqueriacanina.app.viewmodel.AuthViewModel
+import com.peluqueriacanina.app.viewmodel.ServicioViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,6 +41,7 @@ import java.util.Locale
 class ConfiguracionFragment : Fragment() {
 
     private val authViewModel: AuthViewModel by activityViewModels()
+    private val servicioViewModel: ServicioViewModel by activityViewModels()
     
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var btnLogin: Button
@@ -45,6 +54,32 @@ class ConfiguracionFragment : Fragment() {
     private lateinit var btnRestoreDrive: Button
     private lateinit var txtBackupInfo: TextView
     private var progressBar: ProgressBar? = null
+    
+    // Razas
+    private lateinit var layoutRazas: LinearLayout
+    private lateinit var txtNoRazas: TextView
+    private lateinit var btnAddRaza: MaterialButton
+    private lateinit var contentRazas: LinearLayout
+    private lateinit var btnExpandRazas: ImageButton
+    
+    // Tamaños
+    private lateinit var layoutTamanos: LinearLayout
+    private lateinit var txtNoTamanos: TextView
+    private lateinit var btnAddTamano: MaterialButton
+    private lateinit var contentTamanos: LinearLayout
+    private lateinit var btnExpandTamanos: ImageButton
+    
+    // Longitudes de pelo
+    private lateinit var layoutPelos: LinearLayout
+    private lateinit var txtNoPelos: TextView
+    private lateinit var btnAddPelo: MaterialButton
+    private lateinit var contentPelos: LinearLayout
+    private lateinit var btnExpandPelos: ImageButton
+    
+    // Estado de expansión
+    private var razasExpanded = false
+    private var tamanosExpanded = false
+    private var pelosExpanded = false
 
     private var driveBackupService: DriveBackupService? = null
     private var calendarSyncService: CalendarSyncService? = null
@@ -121,6 +156,78 @@ class ConfiguracionFragment : Fragment() {
         btnRestoreDrive = view.findViewById(R.id.btnRestoreDrive)
         txtBackupInfo = view.findViewById(R.id.txtBackupInfo)
         progressBar = view.findViewById(R.id.progressBar)
+        
+        // Razas
+        layoutRazas = view.findViewById(R.id.layoutRazas)
+        txtNoRazas = view.findViewById(R.id.txtNoRazas)
+        btnAddRaza = view.findViewById(R.id.btnAddRaza)
+        contentRazas = view.findViewById(R.id.contentRazas)
+        btnExpandRazas = view.findViewById(R.id.btnExpandRazas)
+        
+        // Tamaños
+        layoutTamanos = view.findViewById(R.id.layoutTamanos)
+        txtNoTamanos = view.findViewById(R.id.txtNoTamanos)
+        btnAddTamano = view.findViewById(R.id.btnAddTamano)
+        contentTamanos = view.findViewById(R.id.contentTamanos)
+        btnExpandTamanos = view.findViewById(R.id.btnExpandTamanos)
+        
+        // Longitudes de pelo
+        layoutPelos = view.findViewById(R.id.layoutPelos)
+        txtNoPelos = view.findViewById(R.id.txtNoPelos)
+        btnAddPelo = view.findViewById(R.id.btnAddPelo)
+        contentPelos = view.findViewById(R.id.contentPelos)
+        btnExpandPelos = view.findViewById(R.id.btnExpandPelos)
+        
+        // Setup expand/collapse para razas
+        view.findViewById<LinearLayout>(R.id.headerRazas).setOnClickListener {
+            toggleRazasExpanded()
+        }
+        btnExpandRazas.setOnClickListener {
+            toggleRazasExpanded()
+        }
+        
+        // Setup expand/collapse para tamaños
+        view.findViewById<LinearLayout>(R.id.headerTamanos).setOnClickListener {
+            toggleTamanosExpanded()
+        }
+        btnExpandTamanos.setOnClickListener {
+            toggleTamanosExpanded()
+        }
+        
+        // Setup expand/collapse para pelos
+        view.findViewById<LinearLayout>(R.id.headerPelos).setOnClickListener {
+            togglePelosExpanded()
+        }
+        btnExpandPelos.setOnClickListener {
+            togglePelosExpanded()
+        }
+        
+        // Observar razas
+        servicioViewModel.allRazas.observe(viewLifecycleOwner) { razas ->
+            updateRazasUI(razas)
+        }
+        
+        // Observar tamaños
+        servicioViewModel.allTamanos.observe(viewLifecycleOwner) { tamanos ->
+            updateTamanosUI(tamanos)
+        }
+        
+        // Observar longitudes de pelo
+        servicioViewModel.allLongitudesPelo.observe(viewLifecycleOwner) { pelos ->
+            updatePelosUI(pelos)
+        }
+        
+        btnAddRaza.setOnClickListener {
+            showAddRazaDialog()
+        }
+        
+        btnAddTamano.setOnClickListener {
+            showAddTamanoDialog()
+        }
+        
+        btnAddPelo.setOnClickListener {
+            showAddPeloDialog()
+        }
 
         authViewModel.currentUser.observe(viewLifecycleOwner) { account ->
             if (account != null) {
@@ -386,5 +493,254 @@ class ConfiguracionFragment : Fragment() {
             calendarSyncService = null
             Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun updateRazasUI(razas: List<Raza>) {
+        layoutRazas.removeAllViews()
+        
+        if (razas.isEmpty()) {
+            txtNoRazas.visibility = View.VISIBLE
+        } else {
+            txtNoRazas.visibility = View.GONE
+            razas.forEach { raza ->
+                val razaView = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_raza_config, layoutRazas, false)
+                
+                razaView.findViewById<TextView>(R.id.txtRazaNombre).text = raza.nombre
+                
+                razaView.findViewById<ImageButton>(R.id.btnEditRaza).setOnClickListener {
+                    showEditRazaDialog(raza)
+                }
+                
+                razaView.findViewById<ImageButton>(R.id.btnDeleteRaza).setOnClickListener {
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Eliminar raza")
+                        .setMessage("¿Estás seguro de eliminar '${raza.nombre}'?")
+                        .setPositiveButton("Eliminar") { _, _ ->
+                            servicioViewModel.deleteRaza(raza)
+                            Toast.makeText(context, "Raza eliminada", Toast.LENGTH_SHORT).show()
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+                
+                layoutRazas.addView(razaView)
+            }
+        }
+    }
+    
+    private fun updateTamanosUI(tamanos: List<Tamano>) {
+        layoutTamanos.removeAllViews()
+        
+        if (tamanos.isEmpty()) {
+            txtNoTamanos.visibility = View.VISIBLE
+        } else {
+            txtNoTamanos.visibility = View.GONE
+            tamanos.forEach { tamano ->
+                val tamanoView = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_raza_config, layoutTamanos, false)
+                
+                tamanoView.findViewById<TextView>(R.id.txtRazaNombre).text = tamano.nombre.replaceFirstChar { it.uppercase() }
+                
+                tamanoView.findViewById<ImageButton>(R.id.btnEditRaza).setOnClickListener {
+                    showEditTamanoDialog(tamano)
+                }
+                
+                tamanoView.findViewById<ImageButton>(R.id.btnDeleteRaza).setOnClickListener {
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Eliminar tamaño")
+                        .setMessage("¿Estás seguro de eliminar '${tamano.nombre}'?")
+                        .setPositiveButton("Eliminar") { _, _ ->
+                            servicioViewModel.deleteTamano(tamano)
+                            Toast.makeText(context, "Tamaño eliminado", Toast.LENGTH_SHORT).show()
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+                
+                layoutTamanos.addView(tamanoView)
+            }
+        }
+    }
+    
+    private fun updatePelosUI(pelos: List<LongitudPelo>) {
+        layoutPelos.removeAllViews()
+        
+        if (pelos.isEmpty()) {
+            txtNoPelos.visibility = View.VISIBLE
+        } else {
+            txtNoPelos.visibility = View.GONE
+            pelos.forEach { pelo ->
+                val peloView = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_raza_config, layoutPelos, false)
+                
+                peloView.findViewById<TextView>(R.id.txtRazaNombre).text = pelo.nombre.replaceFirstChar { it.uppercase() }
+                
+                peloView.findViewById<ImageButton>(R.id.btnEditRaza).setOnClickListener {
+                    showEditPeloDialog(pelo)
+                }
+                
+                peloView.findViewById<ImageButton>(R.id.btnDeleteRaza).setOnClickListener {
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Eliminar longitud de pelo")
+                        .setMessage("¿Estás seguro de eliminar '${pelo.nombre}'?")
+                        .setPositiveButton("Eliminar") { _, _ ->
+                            servicioViewModel.deleteLongitudPelo(pelo)
+                            Toast.makeText(context, "Longitud eliminada", Toast.LENGTH_SHORT).show()
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+                
+                layoutPelos.addView(peloView)
+            }
+        }
+    }
+    
+    private fun toggleRazasExpanded() {
+        razasExpanded = !razasExpanded
+        contentRazas.visibility = if (razasExpanded) View.VISIBLE else View.GONE
+        btnExpandRazas.rotation = if (razasExpanded) 180f else 0f
+    }
+    
+    private fun toggleTamanosExpanded() {
+        tamanosExpanded = !tamanosExpanded
+        contentTamanos.visibility = if (tamanosExpanded) View.VISIBLE else View.GONE
+        btnExpandTamanos.rotation = if (tamanosExpanded) 180f else 0f
+    }
+    
+    private fun togglePelosExpanded() {
+        pelosExpanded = !pelosExpanded
+        contentPelos.visibility = if (pelosExpanded) View.VISIBLE else View.GONE
+        btnExpandPelos.rotation = if (pelosExpanded) 180f else 0f
+    }
+    
+    private fun showAddRazaDialog() {
+        val input = EditText(requireContext())
+        input.hint = "Nombre de la raza"
+        input.setPadding(48, 32, 48, 32)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Nueva raza")
+            .setView(input)
+            .setPositiveButton("Añadir") { _, _ ->
+                val nombre = input.text.toString().trim()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                servicioViewModel.insertRaza(Raza(nombre = nombre))
+                Toast.makeText(context, "Raza añadida", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    
+    private fun showEditRazaDialog(raza: Raza) {
+        val input = EditText(requireContext())
+        input.hint = "Nombre de la raza"
+        input.setText(raza.nombre)
+        input.setPadding(48, 32, 48, 32)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Editar raza")
+            .setView(input)
+            .setPositiveButton("Guardar") { _, _ ->
+                val nombre = input.text.toString().trim()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                servicioViewModel.updateRaza(raza.copy(nombre = nombre))
+                Toast.makeText(context, "Raza actualizada", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    
+    private fun showAddTamanoDialog() {
+        val input = EditText(requireContext())
+        input.hint = "Nombre del tamaño"
+        input.setPadding(48, 32, 48, 32)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Nuevo tamaño")
+            .setView(input)
+            .setPositiveButton("Añadir") { _, _ ->
+                val nombre = input.text.toString().trim().lowercase()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                servicioViewModel.insertTamano(Tamano(nombre = nombre))
+                Toast.makeText(context, "Tamaño añadido", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    
+    private fun showEditTamanoDialog(tamano: Tamano) {
+        val input = EditText(requireContext())
+        input.hint = "Nombre del tamaño"
+        input.setText(tamano.nombre)
+        input.setPadding(48, 32, 48, 32)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Editar tamaño")
+            .setView(input)
+            .setPositiveButton("Guardar") { _, _ ->
+                val nombre = input.text.toString().trim().lowercase()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                servicioViewModel.updateTamano(tamano.copy(nombre = nombre))
+                Toast.makeText(context, "Tamaño actualizado", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    
+    private fun showAddPeloDialog() {
+        val input = EditText(requireContext())
+        input.hint = "Longitud del pelo"
+        input.setPadding(48, 32, 48, 32)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Nueva longitud de pelo")
+            .setView(input)
+            .setPositiveButton("Añadir") { _, _ ->
+                val nombre = input.text.toString().trim().lowercase()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                servicioViewModel.insertLongitudPelo(LongitudPelo(nombre = nombre))
+                Toast.makeText(context, "Longitud añadida", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+    
+    private fun showEditPeloDialog(pelo: LongitudPelo) {
+        val input = EditText(requireContext())
+        input.hint = "Longitud del pelo"
+        input.setText(pelo.nombre)
+        input.setPadding(48, 32, 48, 32)
+        
+        AlertDialog.Builder(requireContext())
+            .setTitle("Editar longitud de pelo")
+            .setView(input)
+            .setPositiveButton("Guardar") { _, _ ->
+                val nombre = input.text.toString().trim().lowercase()
+                if (nombre.isEmpty()) {
+                    Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                servicioViewModel.updateLongitudPelo(pelo.copy(nombre = nombre))
+                Toast.makeText(context, "Longitud actualizada", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 }

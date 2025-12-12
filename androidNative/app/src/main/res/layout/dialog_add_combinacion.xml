@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Raza (opcional)"
+        android:textSize="14sp"
+        android:textColor="#666666" />
+
+    <Spinner
+        android:id="@+id/spinnerRaza"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:background="@android:drawable/btn_dropdown" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Tamaño"
+        android:textSize="14sp"
+        android:textColor="#666666" />
+
+    <Spinner
+        android:id="@+id/spinnerTamano"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:background="@android:drawable/btn_dropdown" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Longitud del pelo"
+        android:textSize="14sp"
+        android:textColor="#666666" />
+
+    <Spinner
+        android:id="@+id/spinnerPelo"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:background="@android:drawable/btn_dropdown" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Precio (€)"
+        android:textSize="14sp"
+        android:textColor="#666666" />
+
+    <EditText
+        android:id="@+id/inputPrecioCombinacion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:inputType="numberDecimal"
+        android:hint="Ej: 25.00" />
+
+</LinearLayout>
